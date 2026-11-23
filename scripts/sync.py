@@ -87,6 +87,23 @@ def atomic_json(path: Path, value):
     os.replace(temporary, path)
 
 
+def navigation_metadata(entries, known_ids, cache, glossary_version):
+    """Preserve the official hierarchy, reusing only exact cached title translations."""
+    navigation = []
+    for raw in entries:
+        entry = {"title": raw["title"], "depth": raw["depth"]}
+        if raw.get("id") in known_ids:
+            entry["id"] = raw["id"]
+        if re.match(r"^https?://", raw.get("href", "")):
+            entry["href"] = raw["href"]
+        seed = SEED_CASEFOLD.get(raw["title"].strip().casefold())
+        translated = seed or cache.get(translation_key(raw["title"], {}, glossary_version))
+        if translated:
+            entry["titleZh"] = BeautifulSoup(translated, "html.parser").get_text()
+        navigation.append(entry)
+    return navigation
+
+
 def route_link(href: str, page_id: str, known_ids: set[str]):
     """Rewrite local chapter, image and attachment targets; never rewrite external sites."""
     if href.startswith(("http://", "https://", "mailto:", "data:", "#", "javascript:")):
@@ -413,6 +430,7 @@ def sync(args):
         print(f"Imported {imported} new or newer Google cache entries", flush=True)
     cache = dict(database.execute("SELECT key, html FROM translations"))
     known_ids = {page["id"] for page in rendered["pages"]}
+    raw_navigation = rendered.get("navigation", [])
     pages = []
     jobs = {}
     active_google_keys = set()
@@ -544,6 +562,7 @@ def sync(args):
         dirty.clear()
         atomic_json(data / "catalog.json", {
             "pages": [{key: value for key, value in page.items() if key not in ("html", "resolved", "sourceUrl", "originalUrl")} for page in pages],
+            "navigation": navigation_metadata(raw_navigation, known_ids, cache, version),
             "upstream": {"commit": commit, "syncedAt": now, "url": UPSTREAM_URL[:-4], "branch": "main"},
             "translation": {"translated": sum(page["translated"] for page in pages), "total": sum(page["total"] for page in pages),
                             "provider": PROVIDER, "providerId": "google", "updatedAt": utcnow(), "status": status, "pending": len(jobs)},
@@ -587,6 +606,7 @@ def sync(args):
                             continue
                         job = jobs.pop(key)
                         database.execute("INSERT OR REPLACE INTO translations VALUES (?,?,?,?)", (key, job["text"], value, utcnow()))
+                        cache[key] = value
                         for page, target_key, title in job["targets"]:
                             if title: page["titleZh"] = BeautifulSoup(value, "html.parser").get_text()
                             else: page["resolved"][target_key] = value

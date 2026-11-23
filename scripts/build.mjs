@@ -20,12 +20,14 @@ for (const line of nav.split('\n')) {
   const entry = line.match(/^(\*+)\s+(?:xref:([^\[]+)\[([^\]]+)\]|(.+))/);
   if (!entry) continue;
   const depth = entry[1].length;
-  const title = entry[3] || entry[4];
+  const external = entry[4]?.match(/^link:(https?:\/\/[^\[]+)\[([^,\]]+)(?:,[^\]]*)?\]$/);
+  const title = external?.[2] || entry[3] || entry[4];
   if (depth === 1) currentGroup = title;
-  if (entry[2]) navigation.push({id: entry[2].replace(/\.adoc$/, ''), title, depth, group: currentGroup});
+  // Keep heading-only entries and repeated links: both define the official tree.
+  navigation.push({...(entry[2] ? {id: entry[2].replace(/\.adoc$/, '')} : {}), ...(external ? {href: external[1]} : {}), title, depth, group: currentGroup});
 }
 const navMap = new Map();
-for (const [order, entry] of navigation.entries()) if (!navMap.has(entry.id)) navMap.set(entry.id, {...entry, order});
+for (const [order, entry] of navigation.entries()) if (entry.id && !navMap.has(entry.id)) navMap.set(entry.id, {...entry, order});
 const pages = [];
 for (const file of walk(path.join(upstream, 'en'))) {
   const id = path.relative(path.join(upstream, 'en'), file).replaceAll('\\', '/').replace(/\.adoc$/, '');
