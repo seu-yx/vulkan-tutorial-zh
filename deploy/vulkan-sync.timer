@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily upstream update at 04:20 Beijing time
+
+[Timer]
+OnCalendar=*-*-* 04:20:00 Asia/Shanghai
+RandomizedDelaySec=120
+Persistent=true
+Unit=vulkan-sync.service
+
+[Install]
+WantedBy=timers.target
+

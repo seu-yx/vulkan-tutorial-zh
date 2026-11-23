@@ -1,0 +1,21 @@
+[Unit]
+Description=Continue cached Chinese translations of the Vulkan tutorial
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=vulkan-mirror
+Group=vulkan-mirror
+WorkingDirectory=/opt/vulkan-tutorial
+Environment=PYTHONUNBUFFERED=1
+Environment=NODE_OPTIONS=--max-old-space-size=192
+ExecStart=/usr/bin/flock -w 5 /opt/vulkan-tutorial/.local/job.lock /opt/vulkan-tutorial/.venv/bin/python scripts/sync.py --no-fetch --provider google --translation-seconds 1200 --workers 1 --delay 1
+TimeoutStartSec=6h
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/vulkan-tutorial
+

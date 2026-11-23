@@ -1,0 +1,12 @@
+[Unit]
+Description=Resume pending translations every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=15min
+Persistent=true
+Unit=vulkan-translate.service
+
+[Install]
+WantedBy=timers.target
+
