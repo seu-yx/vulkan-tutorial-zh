@@ -8,12 +8,12 @@
   <meta name="theme-color" content="#a82432">
   <title>Vulkan 教程 · 中文镜像</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a82432'/%3E%3Cpath d='M15 18h9l8 25 8-25h9L36 49h-8z' fill='white'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./styles.css?v=github-link-1">
+  <link rel="stylesheet" href="./styles.css?v=nested-navigation-1">
   <link rel="stylesheet" href="./syntax.css">
-  <script src="./preferences.js?v=navigation-1"></script>
+  <script src="./preferences.js?v=nested-navigation-1"></script>
   <script src="./syntax.js" defer></script>
-  <script src="./app.js?v=navigation-1" defer></script>
-  <script src="./reader-details.js" defer></script>
+  <script src="./app.js?v=nested-navigation-1" defer></script>
+  <script src="./reader-details.js?v=nested-navigation-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">跳到正文</a>
@@ -22,7 +22,9 @@
       <button class="icon-button menu-button" id="menu-toggle" aria-label="打开章节目录" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <a class="brand" href="./" aria-label="Vulkan 教程首页"><span class="brand-mark" aria-hidden="true">V</span><span class="brand-name">Vulkan<span class="brand-subtitle">教程 · 中文镜像</span></span></a>
     </div>
+    <label class="search-box header-search" id="header-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="chapter-search" type="search" placeholder="搜索章节…" aria-label="搜索中英文章节标题" autocomplete="off"><button id="search-clear" class="icon-button search-clear" type="button" aria-label="清除搜索" title="清除搜索" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><kbd>/</kbd></label>
     <div class="header-actions">
+      <button class="icon-button search-toggle" id="search-toggle" type="button" aria-label="搜索章节" aria-expanded="false" aria-controls="header-search" title="搜索章节（/）"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button>
       <nav class="language-switch" aria-label="阅读语言"><button data-mode="zh" class="mode-button" aria-pressed="true">中文</button><button data-mode="en" class="mode-button" aria-pressed="false">English</button><button data-mode="dual" class="mode-button" aria-pressed="false">中英对照</button></nav>
       <!-- GitHub mark: https://github.com/primer/octicons, under the following license:
       MIT License
@@ -54,12 +56,11 @@
   </header>
   <div class="menu-scrim" id="menu-scrim" hidden></div>
   <aside class="sidebar" id="sidebar" aria-label="教程章节目录">
-    <div class="sidebar-heading"><span class="eyebrow">学习文档</span><span class="version-tag">latest</span></div>
-    <label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="chapter-search" type="search" placeholder="搜索章节…" aria-label="搜索中英文章节标题" autocomplete="off"><button id="search-clear" class="icon-button search-clear" type="button" aria-label="清除搜索" title="清除搜索" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><kbd>/</kbd></label>
     <div id="search-summary" class="search-summary" aria-live="polite"></div>
     <div class="nav-tools" role="group" aria-label="章节目录工具"><button id="nav-expand-all" type="button" aria-label="展开全部章节分组" title="展开全部章节分组">全部展开</button><button id="nav-collapse-all" type="button" aria-label="收起全部章节分组" title="收起全部章节分组">全部收起</button><button id="nav-current" type="button" aria-label="定位当前章节" title="在目录中定位当前章节"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>定位</button></div>
     <nav class="chapter-nav" id="chapter-nav" aria-label="章节"><p class="nav-loading">正在读取章节目录…</p></nav>
-    <div class="sidebar-footer"><span class="sync-light" aria-hidden="true"></span><span id="sync-time">与官方源码同步</span><button id="about-open" class="plain-button">关于镜像</button></div>
+    <div class="sidebar-footer"><div class="sidebar-sync"><span class="sync-light" aria-hidden="true"></span><span id="sync-time">与官方源码同步</span></div><div class="sidebar-footer-actions"><button id="about-open" class="plain-button">关于镜像</button><span class="version-tag" title="官方教程版本">latest</span></div></div>
+    <div id="sidebar-resizer" class="sidebar-resizer" role="separator" tabindex="0" aria-label="调整章节目录宽度" aria-orientation="vertical" aria-controls="sidebar" title="拖动调整目录宽度；方向键调整，双击恢复默认"></div>
   </aside>
   <main id="main" tabindex="-1">
     <div class="reading-layout">
