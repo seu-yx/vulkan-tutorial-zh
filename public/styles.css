@@ -38,6 +38,7 @@
 @media(max-width:640px){.repository-link{width:31px;height:31px}.repository-link svg{width:19px;height:19px}}
 
 /* Preserve the upstream chapter hierarchy and keep reader tools in the header. */
+#article-title .vt-term{border-bottom:1px dashed var(--accent);cursor:help}#article-title .vt-term:hover,#article-title .vt-term:focus{background:var(--accent-soft);border-radius:2px}
 .site-header{gap:24px;z-index:50}.brand-area,.header-actions{flex:none}.header-actions{gap:14px}
 .header-search{flex:1;max-width:420px;min-width:160px;margin-left:auto;margin-right:auto;padding:7px 10px;height:36px;background:var(--surface)}
 .search-toggle{display:none}.header-search input::-webkit-search-cancel-button{-webkit-appearance:none}

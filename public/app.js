@@ -209,7 +209,7 @@
     if (state.page) { updatePageHeading(); buildToc(); updatePageLinks(); }
   }
   function applyTerms() {
-    $$('.vt-zh .vt-term', $('#article-content')).forEach(term => {
+    $$('#article-content .vt-zh .vt-term, #article-title .vt-term').forEach(term => {
       if (!term.dataset.originalZh) term.dataset.originalZh = term.textContent;
       const english = term.dataset.term || term.dataset.english || term.title;
       if (english) term.textContent = state.terms ? english : term.dataset.originalZh;
@@ -261,7 +261,9 @@
   }
   function updatePageHeading() {
     const page = state.page; const title = displayTitle(page);
-    $('#article-title').textContent = title; $('#breadcrumb-current').textContent = title; $('#article-group').textContent = groupTitle(page.group || state.catalog?.pages.find(item => item.id === page.id)?.group || 'VULKAN TUTORIAL');
+    if (state.mode !== 'en' && page.titleZhHtml) $('#article-title').innerHTML = page.titleZhHtml;
+    else $('#article-title').textContent = title;
+    $('#breadcrumb-current').textContent = title; $('#article-group').textContent = groupTitle(page.group || state.catalog?.pages.find(item => item.id === page.id)?.group || 'VULKAN TUTORIAL');
     $('#article-subtitle').textContent = state.mode !== 'en' && page.titleZh && page.titleZh !== page.title ? page.title : '';
     $('#article-subtitle').hidden = !$('#article-subtitle').textContent;
     $('#original-link').href = page.originalUrl || `https://docs.vulkan.org/tutorial/latest/${page.id.split('/').map(encodeURIComponent).join('/')}.html`;
@@ -282,6 +284,7 @@
     $('#page-license').textContent = license ? `本章许可：${license}` : '';
     $('#page-copyright').hidden = !copyright.length;
     $('#page-copyright').textContent = copyright.join('\n');
+    applyTerms();
   }
   function buildToc() {
     if (observer) observer.disconnect();
