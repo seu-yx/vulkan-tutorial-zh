@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vulkan tutorial display terminology",
+  "type": "object",
+  "required": ["terms"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"type": "string"},
+    "description": {"type": "string"},
+    "references": {"type": "array", "items": {"type": "string", "format": "uri"}},
+    "terms": {"type": "array", "items": {"$ref": "#/$defs/term"}}
+  },
+  "$defs": {
+    "words": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}]},
+    "term": {
+      "type": "object",
+      "required": ["english", "chinese"],
+      "additionalProperties": false,
+      "properties": {
+        "english": {"type": "string", "minLength": 1, "description": "Canonical English term displayed in tooltips."},
+        "chinese": {"type": "string", "minLength": 1, "description": "Preferred Chinese wording."},
+        "aliases": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "description": "Chinese wording already found in Google translations."},
+        "exactAliases": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "description": "Aliases allowed only when the entire English block equals this term or one of its variants."},
+        "variants": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "description": "Explicit plurals and other English forms."},
+        "normalize": {"type": "boolean", "default": false, "description": "Replace matched aliases with the preferred Chinese wording."},
+        "context": {
+          "type": "object", "additionalProperties": false,
+          "properties": {"requireAny": {"$ref": "#/$defs/words"}, "excludeAny": {"$ref": "#/$defs/words"}}
+        },
+        "includeContext": {"$ref": "#/$defs/words"},
+        "excludeContext": {"$ref": "#/$defs/words"}
+      }
+    }
+  }
+}

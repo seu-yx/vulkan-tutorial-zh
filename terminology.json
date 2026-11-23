@@ -1,0 +1,1808 @@
+{
+  "$schema": "./terminology.schema.json",
+  "description": "Display-only Vulkan terminology. Source-backed annotations reuse Google translations; this file does not change translation cache identities. normalize only applies to explicitly curated unambiguous aliases.",
+  "references": [
+    "https://docs.vulkan.org/spec/latest/appendices/glossary.html",
+    "https://docs.vulkan.org/spec/latest/chapters/VK_KHR_surface/wsi.html"
+  ],
+  "terms": [
+    {
+      "english": "physical device",
+      "chinese": "物理设备",
+      "aliases": [
+        "物理设备"
+      ],
+      "variants": [
+        "physical devices"
+      ]
+    },
+    {
+      "english": "logical device",
+      "chinese": "逻辑设备",
+      "aliases": [
+        "逻辑设备"
+      ],
+      "variants": [
+        "logical devices"
+      ]
+    },
+    {
+      "english": "queue family",
+      "chinese": "队列族",
+      "aliases": [
+        "队列族"
+      ],
+      "variants": [
+        "queue families"
+      ]
+    },
+    {
+      "english": "graphics pipeline",
+      "chinese": "图形管线",
+      "aliases": [
+        "图形管线",
+        "图形管道"
+      ],
+      "variants": [
+        "graphics pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "compute pipeline",
+      "chinese": "计算管线",
+      "aliases": [
+        "计算管线",
+        "计算管道"
+      ],
+      "variants": [
+        "compute pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "pipeline layout",
+      "chinese": "管线布局",
+      "aliases": [
+        "管线布局"
+      ],
+      "variants": [
+        "pipeline layouts"
+      ]
+    },
+    {
+      "english": "pipeline barrier",
+      "chinese": "管线屏障",
+      "aliases": [
+        "管线屏障",
+        "管道屏障"
+      ],
+      "variants": [
+        "pipeline barriers"
+      ]
+    },
+    {
+      "english": "command buffer",
+      "chinese": "命令缓冲区",
+      "aliases": [
+        "命令缓冲区"
+      ],
+      "variants": [
+        "command buffers"
+      ]
+    },
+    {
+      "english": "command pool",
+      "chinese": "命令池",
+      "aliases": [
+        "命令池"
+      ],
+      "variants": [
+        "command pools"
+      ]
+    },
+    {
+      "english": "descriptor set layout",
+      "chinese": "描述符集布局",
+      "aliases": [
+        "描述符集布局"
+      ],
+      "variants": [
+        "descriptor set layouts"
+      ]
+    },
+    {
+      "english": "descriptor set",
+      "chinese": "描述符集",
+      "aliases": [
+        "描述符集"
+      ],
+      "variants": [
+        "descriptor sets"
+      ]
+    },
+    {
+      "english": "descriptor pool",
+      "chinese": "描述符池",
+      "aliases": [
+        "描述符池"
+      ],
+      "variants": [
+        "descriptor pools"
+      ]
+    },
+    {
+      "english": "push constant",
+      "chinese": "推送常量",
+      "aliases": [
+        "推送常量",
+        "推常量"
+      ],
+      "variants": [
+        "push constants"
+      ]
+    },
+    {
+      "english": "uniform buffer",
+      "chinese": "统一缓冲区",
+      "aliases": [
+        "统一缓冲区",
+        "均匀缓冲区"
+      ],
+      "variants": [
+        "uniform buffers"
+      ]
+    },
+    {
+      "english": "vertex buffer",
+      "chinese": "顶点缓冲区",
+      "aliases": [
+        "顶点缓冲区"
+      ],
+      "variants": [
+        "vertex buffers"
+      ]
+    },
+    {
+      "english": "index buffer",
+      "chinese": "索引缓冲区",
+      "aliases": [
+        "索引缓冲区"
+      ],
+      "variants": [
+        "index buffers"
+      ]
+    },
+    {
+      "english": "staging buffer",
+      "chinese": "暂存缓冲区",
+      "aliases": [
+        "暂存缓冲区"
+      ],
+      "variants": [
+        "staging buffers"
+      ]
+    },
+    {
+      "english": "swap chain",
+      "chinese": "交换链",
+      "aliases": [
+        "交换链"
+      ],
+      "variants": [
+        "swap chains"
+      ]
+    },
+    {
+      "english": "swapchain",
+      "chinese": "交换链",
+      "aliases": [
+        "交换链"
+      ],
+      "variants": [
+        "swapchains"
+      ]
+    },
+    {
+      "english": "image view",
+      "chinese": "图像视图",
+      "aliases": [
+        "图像视图"
+      ],
+      "variants": [
+        "image views"
+      ]
+    },
+    {
+      "english": "render pass",
+      "chinese": "渲染通道",
+      "aliases": [
+        "渲染通道"
+      ],
+      "variants": [
+        "render passes"
+      ]
+    },
+    {
+      "english": "framebuffer",
+      "chinese": "帧缓冲",
+      "aliases": [
+        "帧缓冲"
+      ],
+      "variants": [
+        "framebuffers",
+        "frame buffer",
+        "frame buffers"
+      ]
+    },
+    {
+      "english": "timeline semaphore",
+      "chinese": "时间线信号量",
+      "aliases": [
+        "时间线信号量",
+        "时间线信号",
+        "时间轴信号量"
+      ],
+      "variants": [
+        "timeline semaphores"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "binary semaphore",
+      "chinese": "二进制信号量",
+      "aliases": [
+        "二进制信号量"
+      ],
+      "variants": [
+        "binary semaphores"
+      ]
+    },
+    {
+      "english": "semaphore",
+      "chinese": "信号量",
+      "aliases": [
+        "信号量"
+      ],
+      "variants": [
+        "semaphores"
+      ]
+    },
+    {
+      "english": "fence",
+      "chinese": "栅栏",
+      "aliases": [
+        "栅栏",
+        "围栏"
+      ],
+      "variants": [
+        "fences"
+      ]
+    },
+    {
+      "english": "dynamic rendering",
+      "chinese": "动态渲染",
+      "aliases": [
+        "动态渲染"
+      ]
+    },
+    {
+      "english": "validation layer",
+      "chinese": "验证层",
+      "aliases": [
+        "验证层"
+      ],
+      "variants": [
+        "validation layers"
+      ]
+    },
+    {
+      "english": "ray tracing",
+      "chinese": "光线追踪",
+      "aliases": [
+        "光线追踪"
+      ]
+    },
+    {
+      "english": "acceleration structure",
+      "chinese": "加速结构",
+      "aliases": [
+        "加速结构"
+      ],
+      "variants": [
+        "acceleration structures"
+      ]
+    },
+    {
+      "english": "shader",
+      "chinese": "着色器",
+      "aliases": [
+        "着色器"
+      ],
+      "variants": [
+        "shaders"
+      ]
+    },
+    {
+      "english": "sampler",
+      "chinese": "采样器",
+      "aliases": [
+        "采样器"
+      ],
+      "variants": [
+        "samplers"
+      ]
+    },
+    {
+      "english": "texture",
+      "chinese": "纹理",
+      "aliases": [
+        "纹理"
+      ],
+      "variants": [
+        "textures"
+      ]
+    },
+    {
+      "english": "mipmap",
+      "chinese": "多级渐远纹理",
+      "aliases": [
+        "多级渐远纹理",
+        "Mipmaps",
+        "mipmap"
+      ],
+      "variants": [
+        "mipmaps"
+      ]
+    },
+    {
+      "english": "rasterization",
+      "chinese": "光栅化",
+      "aliases": [
+        "光栅化"
+      ]
+    },
+    {
+      "english": "viewport",
+      "chinese": "视口",
+      "aliases": [
+        "视口"
+      ],
+      "variants": [
+        "viewports"
+      ]
+    },
+    {
+      "english": "scissor",
+      "chinese": "裁剪矩形",
+      "aliases": [
+        "裁剪矩形"
+      ],
+      "variants": [
+        "scissors"
+      ]
+    },
+    {
+      "english": "synchronization",
+      "chinese": "同步",
+      "aliases": [
+        "同步"
+      ]
+    },
+    {
+      "english": "multisampling",
+      "chinese": "多重采样",
+      "aliases": [
+        "多重采样"
+      ]
+    },
+    {
+      "english": "class member",
+      "chinese": "类成员",
+      "aliases": [
+        "类成员"
+      ],
+      "variants": [
+        "class members"
+      ]
+    },
+    {
+      "english": "member function",
+      "chinese": "成员函数",
+      "aliases": [
+        "成员函数"
+      ],
+      "variants": [
+        "member functions"
+      ]
+    },
+    {
+      "english": "function pointer",
+      "chinese": "函数指针",
+      "aliases": [
+        "函数指针"
+      ],
+      "variants": [
+        "function pointers"
+      ]
+    },
+    {
+      "english": "graphics card",
+      "chinese": "显卡",
+      "aliases": [
+        "显卡"
+      ],
+      "variants": [
+        "graphics cards"
+      ]
+    },
+    {
+      "english": "graphics queue",
+      "chinese": "图形队列",
+      "aliases": [
+        "图形队列"
+      ],
+      "variants": [
+        "graphics queues"
+      ]
+    },
+    {
+      "english": "device extension",
+      "chinese": "设备扩展",
+      "aliases": [
+        "设备扩展"
+      ],
+      "variants": [
+        "device extensions"
+      ]
+    },
+    {
+      "english": "instance extension",
+      "chinese": "实例扩展",
+      "aliases": [
+        "实例扩展"
+      ],
+      "variants": [
+        "instance extensions"
+      ]
+    },
+    {
+      "english": "memory allocation",
+      "chinese": "内存分配",
+      "aliases": [
+        "内存分配"
+      ],
+      "variants": [
+        "memory allocations"
+      ]
+    },
+    {
+      "english": "memory barrier",
+      "chinese": "内存屏障",
+      "aliases": [
+        "内存屏障"
+      ],
+      "variants": [
+        "memory barriers"
+      ]
+    },
+    {
+      "english": "device memory",
+      "chinese": "设备内存",
+      "aliases": [
+        "设备内存"
+      ]
+    },
+    {
+      "english": "host memory",
+      "chinese": "主机内存",
+      "aliases": [
+        "主机内存"
+      ]
+    },
+    {
+      "english": "shader module",
+      "chinese": "着色器模块",
+      "aliases": [
+        "着色器模块"
+      ],
+      "variants": [
+        "shader modules"
+      ]
+    },
+    {
+      "english": "fragment shader",
+      "chinese": "片段着色器",
+      "aliases": [
+        "片段着色器"
+      ],
+      "variants": [
+        "fragment shaders"
+      ]
+    },
+    {
+      "english": "vertex shader",
+      "chinese": "顶点着色器",
+      "aliases": [
+        "顶点着色器"
+      ],
+      "variants": [
+        "vertex shaders"
+      ]
+    },
+    {
+      "english": "compute shader",
+      "chinese": "计算着色器",
+      "aliases": [
+        "计算着色器"
+      ],
+      "variants": [
+        "compute shaders"
+      ]
+    },
+    {
+      "english": "rendering",
+      "chinese": "渲染",
+      "aliases": [
+        "渲染"
+      ]
+    },
+    {
+      "english": "buffer",
+      "chinese": "缓冲区",
+      "aliases": [
+        "缓冲区",
+        "缓冲器",
+        "缓冲",
+        "缓冲存储器"
+      ],
+      "variants": [
+        "buffers"
+      ]
+    },
+    {
+      "english": "image",
+      "chinese": "图像",
+      "aliases": [
+        "图像",
+        "映像"
+      ],
+      "variants": [
+        "images"
+      ]
+    },
+    {
+      "english": "pipeline",
+      "chinese": "管线",
+      "aliases": [
+        "管线",
+        "流水线",
+        "管道"
+      ],
+      "variants": [
+        "pipelines"
+      ]
+    },
+    {
+      "english": "inference",
+      "chinese": "推理",
+      "aliases": [
+        "推理"
+      ]
+    },
+    {
+      "english": "vertex",
+      "chinese": "顶点",
+      "aliases": [
+        "顶点"
+      ],
+      "variants": [
+        "vertices"
+      ]
+    },
+    {
+      "english": "descriptor",
+      "chinese": "描述符",
+      "aliases": [
+        "描述符",
+        "描述器"
+      ],
+      "variants": [
+        "descriptors"
+      ]
+    },
+    {
+      "english": "queue",
+      "chinese": "队列",
+      "aliases": [
+        "队列"
+      ],
+      "variants": [
+        "queues"
+      ]
+    },
+    {
+      "english": "surface",
+      "chinese": "表面",
+      "aliases": [
+        "表面",
+        "曲面",
+        "Surface"
+      ],
+      "variants": [
+        "surfaces"
+      ]
+    },
+    {
+      "english": "fragment",
+      "chinese": "片元",
+      "aliases": [
+        "片段",
+        "片元"
+      ],
+      "context": {
+        "requireAny": [
+          "shader",
+          "rasterization",
+          "shading",
+          "pixel",
+          "pipeline",
+          "depth",
+          "color",
+          "geometry",
+          "drawn",
+          "rasterizer",
+          "triangle",
+          "triangles"
+        ],
+        "excludeAny": [
+          "code fragment",
+          "code fragments",
+          "fragment of code",
+          "fragments of code"
+        ]
+      },
+      "variants": [
+        "fragments"
+      ]
+    },
+    {
+      "english": "host",
+      "chinese": "主机",
+      "aliases": [
+        "主机"
+      ]
+    },
+    {
+      "english": "quantization",
+      "chinese": "量化",
+      "aliases": [
+        "量化"
+      ]
+    },
+    {
+      "english": "tensor",
+      "chinese": "张量",
+      "aliases": [
+        "张量"
+      ],
+      "variants": [
+        "tensors"
+      ]
+    },
+    {
+      "english": "subgroup",
+      "chinese": "子组",
+      "aliases": [
+        "子组",
+        "子群"
+      ],
+      "variants": [
+        "subgroups",
+        "sub-group",
+        "sub-groups"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "pose",
+      "chinese": "位姿",
+      "aliases": [
+        "姿势",
+        "位姿"
+      ],
+      "normalize": true,
+      "variants": [
+        "poses"
+      ]
+    },
+    {
+      "english": "scene graph",
+      "chinese": "场景图",
+      "aliases": [
+        "场景图"
+      ],
+      "variants": [
+        "scene graphs"
+      ]
+    },
+    {
+      "english": "shared memory",
+      "chinese": "共享内存",
+      "aliases": [
+        "共享内存"
+      ]
+    },
+    {
+      "english": "instance",
+      "chinese": "实例",
+      "aliases": [
+        "实例"
+      ],
+      "variants": [
+        "instances"
+      ]
+    },
+    {
+      "english": "skinning",
+      "chinese": "蒙皮",
+      "aliases": [
+        "蒙皮",
+        "剥皮"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "blending",
+      "chinese": "混合",
+      "aliases": [
+        "混合"
+      ]
+    },
+    {
+      "english": "neural network",
+      "chinese": "神经网络",
+      "aliases": [
+        "神经网络"
+      ],
+      "variants": [
+        "neural networks"
+      ]
+    },
+    {
+      "english": "workgroup",
+      "chinese": "工作组",
+      "aliases": [
+        "工作组"
+      ],
+      "variants": [
+        "work group",
+        "workgroups",
+        "work groups"
+      ]
+    },
+    {
+      "english": "attachment",
+      "chinese": "附件",
+      "aliases": [
+        "附件",
+        "附着"
+      ],
+      "context": {
+        "requireAny": [
+          "render",
+          "rendering",
+          "image",
+          "color",
+          "depth",
+          "stencil",
+          "framebuffer",
+          "resolve",
+          "load",
+          "store"
+        ]
+      },
+      "variants": [
+        "attachments"
+      ]
+    },
+    {
+      "english": "presentation",
+      "chinese": "呈现",
+      "aliases": [
+        "演示",
+        "呈现",
+        "展示",
+        "表示"
+      ],
+      "normalize": true,
+      "context": {
+        "excludeAny": [
+          "demo",
+          "demonstration",
+          "PowerPoint",
+          "slide deck",
+          "represent",
+          "represents",
+          "representation",
+          "representing",
+          "indicate",
+          "indicates"
+        ]
+      },
+      "variants": [
+        "presentations"
+      ],
+      "exactAliases": [
+        "介绍"
+      ]
+    },
+    {
+      "english": "ray query",
+      "chinese": "光线查询",
+      "aliases": [
+        "射线查询",
+        "光线查询"
+      ],
+      "variants": [
+        "ray queries"
+      ]
+    },
+    {
+      "english": "depth buffer",
+      "chinese": "深度缓冲区",
+      "aliases": [
+        "深度缓冲区",
+        "深度缓冲"
+      ],
+      "variants": [
+        "depth buffers"
+      ]
+    },
+    {
+      "english": "texture coordinate",
+      "chinese": "纹理坐标",
+      "aliases": [
+        "纹理坐标"
+      ],
+      "variants": [
+        "texture coordinates"
+      ]
+    },
+    {
+      "english": "bindless",
+      "chinese": "无绑定",
+      "aliases": [
+        "无绑定",
+        "bindless",
+        "Bindless"
+      ]
+    },
+    {
+      "english": "rasterizer",
+      "chinese": "光栅化器",
+      "aliases": [
+        "光栅器",
+        "光栅化器"
+      ],
+      "variants": [
+        "rasterizers"
+      ]
+    },
+    {
+      "english": "signaled",
+      "chinese": "已发信号",
+      "aliases": [
+        "已发出信号",
+        "已发信号",
+        "已触发",
+        "发出信号",
+        "发信号",
+        "有信号"
+      ]
+    },
+    {
+      "english": "descriptor indexing",
+      "chinese": "描述符索引",
+      "aliases": [
+        "描述符索引"
+      ]
+    },
+    {
+      "english": "physically based rendering",
+      "chinese": "基于物理的渲染",
+      "aliases": [
+        "基于物理的渲染"
+      ]
+    },
+    {
+      "english": "color attachment",
+      "chinese": "颜色附件",
+      "aliases": [
+        "颜色附件",
+        "彩色附件"
+      ],
+      "variants": [
+        "color attachments"
+      ]
+    },
+    {
+      "english": "subpass",
+      "chinese": "子通道",
+      "aliases": [
+        "子通道",
+        "子过程"
+      ],
+      "variants": [
+        "subpasses"
+      ]
+    },
+    {
+      "english": "cooperative matrix",
+      "chinese": "协作矩阵",
+      "aliases": [
+        "协作矩阵",
+        "合作矩阵"
+      ],
+      "variants": [
+        "cooperative matrices"
+      ]
+    },
+    {
+      "english": "storage buffer",
+      "chinese": "存储缓冲区",
+      "aliases": [
+        "存储缓冲区"
+      ],
+      "variants": [
+        "storage buffers"
+      ]
+    },
+    {
+      "english": "image layout",
+      "chinese": "图像布局",
+      "aliases": [
+        "图像布局",
+        "映像布局"
+      ],
+      "variants": [
+        "image layouts"
+      ]
+    },
+    {
+      "english": "primitive",
+      "chinese": "图元",
+      "aliases": [
+        "原语",
+        "图元",
+        "基元"
+      ],
+      "variants": [
+        "primitives"
+      ]
+    },
+    {
+      "english": "buffer device address",
+      "chinese": "缓冲区设备地址",
+      "aliases": [
+        "缓冲区设备地址",
+        "缓冲设备地址"
+      ],
+      "variants": [
+        "buffer device addresses"
+      ]
+    },
+    {
+      "english": "mip level",
+      "chinese": "Mipmap 级别",
+      "aliases": [
+        "Mip级别",
+        "mip级别",
+        "Mip 级别",
+        "多级渐远级别"
+      ],
+      "variants": [
+        "mip levels"
+      ]
+    },
+    {
+      "english": "swapchain image",
+      "chinese": "交换链图像",
+      "aliases": [
+        "交换链图像",
+        "交换链映像"
+      ],
+      "variants": [
+        "swapchain images"
+      ]
+    },
+    {
+      "english": "pipeline state",
+      "chinese": "管线状态",
+      "aliases": [
+        "管线状态",
+        "管道状态"
+      ],
+      "variants": [
+        "pipeline states"
+      ]
+    },
+    {
+      "english": "skeletal animation",
+      "chinese": "骨骼动画",
+      "aliases": [
+        "骨骼动画"
+      ]
+    },
+    {
+      "english": "layout transition",
+      "chinese": "布局转换",
+      "aliases": [
+        "布局转换",
+        "布局过渡"
+      ],
+      "variants": [
+        "layout transitions"
+      ]
+    },
+    {
+      "english": "frames in flight",
+      "chinese": "并行帧",
+      "aliases": [
+        "并行帧",
+        "飞行中的帧",
+        "在途帧"
+      ]
+    },
+    {
+      "english": "late latching",
+      "chinese": "延迟锁存",
+      "aliases": [
+        "延迟锁存",
+        "后期锁存"
+      ]
+    },
+    {
+      "english": "reprojection",
+      "chinese": "重投影",
+      "aliases": [
+        "重新投影",
+        "重投影"
+      ]
+    },
+    {
+      "english": "pipeline stage",
+      "chinese": "管线阶段",
+      "aliases": [
+        "管线阶段",
+        "管道阶段"
+      ],
+      "variants": [
+        "pipeline stages"
+      ]
+    },
+    {
+      "english": "memory model",
+      "chinese": "内存模型",
+      "aliases": [
+        "内存模型"
+      ],
+      "variants": [
+        "memory models"
+      ]
+    },
+    {
+      "english": "vertex input",
+      "chinese": "顶点输入",
+      "aliases": [
+        "顶点输入"
+      ]
+    },
+    {
+      "english": "memory type",
+      "chinese": "内存类型",
+      "aliases": [
+        "内存类型",
+        "存储类型"
+      ],
+      "variants": [
+        "memory types"
+      ]
+    },
+    {
+      "english": "compute dispatch",
+      "chinese": "计算分派",
+      "aliases": [
+        "计算调度",
+        "计算分派"
+      ]
+    },
+    {
+      "english": "window surface",
+      "chinese": "窗口表面",
+      "aliases": [
+        "窗口表面",
+        "窗口曲面"
+      ],
+      "normalize": true,
+      "variants": [
+        "window surfaces"
+      ]
+    },
+    {
+      "english": "render target",
+      "chinese": "渲染目标",
+      "aliases": [
+        "渲染目标"
+      ],
+      "variants": [
+        "render targets"
+      ]
+    },
+    {
+      "english": "shader invocation",
+      "chinese": "着色器调用",
+      "aliases": [
+        "着色器调用"
+      ],
+      "variants": [
+        "shader invocations"
+      ]
+    },
+    {
+      "english": "occlusion culling",
+      "chinese": "遮挡剔除",
+      "aliases": [
+        "遮挡剔除",
+        "遮挡淘汰"
+      ]
+    },
+    {
+      "english": "foveated rendering",
+      "chinese": "注视点渲染",
+      "aliases": [
+        "中央凹渲染",
+        "注视点渲染"
+      ]
+    },
+    {
+      "english": "storage image",
+      "chinese": "存储图像",
+      "aliases": [
+        "存储图像",
+        "存储映像"
+      ],
+      "variants": [
+        "storage images"
+      ]
+    },
+    {
+      "english": "execution dependency",
+      "chinese": "执行依赖",
+      "aliases": [
+        "执行依赖",
+        "执行依赖性"
+      ],
+      "variants": [
+        "execution dependencies"
+      ]
+    },
+    {
+      "english": "inverse kinematics",
+      "chinese": "逆运动学",
+      "aliases": [
+        "逆运动学",
+        "反向运动学"
+      ]
+    },
+    {
+      "english": "color space",
+      "chinese": "色彩空间",
+      "aliases": [
+        "颜色空间",
+        "色彩空间"
+      ],
+      "variants": [
+        "color spaces"
+      ]
+    },
+    {
+      "english": "depth attachment",
+      "chinese": "深度附件",
+      "aliases": [
+        "深度附件"
+      ],
+      "variants": [
+        "depth attachments"
+      ]
+    },
+    {
+      "english": "memory dependency",
+      "chinese": "内存依赖",
+      "aliases": [
+        "内存依赖",
+        "内存依赖性"
+      ],
+      "variants": [
+        "memory dependencies"
+      ]
+    },
+    {
+      "english": "indirect dispatch",
+      "chinese": "间接分派",
+      "aliases": [
+        "间接调度",
+        "间接分派"
+      ]
+    },
+    {
+      "english": "bounding box",
+      "chinese": "包围盒",
+      "aliases": [
+        "边界框",
+        "包围盒"
+      ],
+      "variants": [
+        "bounding boxes"
+      ]
+    },
+    {
+      "english": "queue family ownership",
+      "chinese": "队列族所有权",
+      "aliases": [
+        "队列族所有权",
+        "队列家族所有权"
+      ]
+    },
+    {
+      "english": "memory mapping",
+      "chinese": "内存映射",
+      "aliases": [
+        "内存映射"
+      ]
+    },
+    {
+      "english": "device local",
+      "chinese": "设备本地",
+      "aliases": [
+        "设备本地",
+        "设备局部"
+      ],
+      "variants": [
+        "device-local"
+      ]
+    },
+    {
+      "english": "frustum culling",
+      "chinese": "视锥剔除",
+      "aliases": [
+        "视锥体剔除",
+        "视锥剔除"
+      ]
+    },
+    {
+      "english": "alpha blending",
+      "chinese": "Alpha 混合",
+      "aliases": [
+        "Alpha 混合",
+        "alpha混合",
+        "阿尔法混合"
+      ]
+    },
+    {
+      "english": "anti-aliasing",
+      "chinese": "抗锯齿",
+      "aliases": [
+        "抗锯齿",
+        "反锯齿"
+      ]
+    },
+    {
+      "english": "stage mask",
+      "chinese": "阶段掩码",
+      "aliases": [
+        "阶段掩码"
+      ],
+      "variants": [
+        "stage masks"
+      ]
+    },
+    {
+      "english": "unsignaled",
+      "chinese": "未发信号",
+      "aliases": [
+        "未发出信号",
+        "未发信号",
+        "未触发",
+        "无信号"
+      ]
+    },
+    {
+      "english": "normal map",
+      "chinese": "法线贴图",
+      "aliases": [
+        "法线贴图",
+        "正常贴图"
+      ],
+      "normalize": true,
+      "variants": [
+        "normal maps"
+      ]
+    },
+    {
+      "english": "ownership transfer",
+      "chinese": "所有权转移",
+      "aliases": [
+        "所有权转移",
+        "所有权转让"
+      ]
+    },
+    {
+      "english": "stencil buffer",
+      "chinese": "模板缓冲区",
+      "aliases": [
+        "模板缓冲区"
+      ],
+      "variants": [
+        "stencil buffers"
+      ]
+    },
+    {
+      "english": "pipeline cache",
+      "chinese": "管线缓存",
+      "aliases": [
+        "管线缓存",
+        "管道缓存"
+      ],
+      "variants": [
+        "pipeline caches"
+      ]
+    },
+    {
+      "english": "shader stage",
+      "chinese": "着色器阶段",
+      "aliases": [
+        "着色器阶段"
+      ],
+      "variants": [
+        "shader stages"
+      ]
+    },
+    {
+      "english": "read-after-write",
+      "chinese": "写后读",
+      "aliases": [
+        "写后读",
+        "写入后读取"
+      ]
+    },
+    {
+      "english": "field of view",
+      "chinese": "视场角",
+      "aliases": [
+        "视野",
+        "视场",
+        "视场角"
+      ]
+    },
+    {
+      "english": "sample count",
+      "chinese": "采样数",
+      "aliases": [
+        "样本数",
+        "采样数"
+      ]
+    },
+    {
+      "english": "texel",
+      "chinese": "纹素",
+      "aliases": [
+        "纹素",
+        "纹理像素"
+      ],
+      "variants": [
+        "texels"
+      ]
+    },
+    {
+      "english": "host visible",
+      "chinese": "主机可见",
+      "aliases": [
+        "主机可见"
+      ],
+      "variants": [
+        "host-visible"
+      ]
+    },
+    {
+      "english": "access mask",
+      "chinese": "访问掩码",
+      "aliases": [
+        "访问掩码"
+      ],
+      "variants": [
+        "access masks"
+      ]
+    },
+    {
+      "english": "memory consistency",
+      "chinese": "内存一致性",
+      "aliases": [
+        "内存一致性"
+      ]
+    },
+    {
+      "english": "race condition",
+      "chinese": "竞态条件",
+      "aliases": [
+        "竞争条件",
+        "竞态条件"
+      ],
+      "variants": [
+        "race conditions"
+      ]
+    },
+    {
+      "english": "normal mapping",
+      "chinese": "法线映射",
+      "aliases": [
+        "法线映射",
+        "正常映射"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "input assembly",
+      "chinese": "输入装配",
+      "aliases": [
+        "输入组装",
+        "输入装配",
+        "输入汇编"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "presentation queue",
+      "chinese": "呈现队列",
+      "aliases": [
+        "演示队列",
+        "呈现队列"
+      ],
+      "normalize": true,
+      "variants": [
+        "presentation queues"
+      ]
+    },
+    {
+      "english": "specialization constant",
+      "chinese": "特化常量",
+      "aliases": [
+        "特化常量",
+        "专用常量"
+      ],
+      "variants": [
+        "specialization constants"
+      ]
+    },
+    {
+      "english": "anisotropic filtering",
+      "chinese": "各向异性过滤",
+      "aliases": [
+        "各向异性过滤",
+        "各向异性滤波"
+      ]
+    },
+    {
+      "english": "execution barrier",
+      "chinese": "执行屏障",
+      "aliases": [
+        "执行屏障"
+      ],
+      "variants": [
+        "execution barriers"
+      ]
+    },
+    {
+      "english": "deadlock",
+      "chinese": "死锁",
+      "aliases": [
+        "死锁"
+      ],
+      "variants": [
+        "deadlocks"
+      ]
+    },
+    {
+      "english": "bottom-level acceleration structure",
+      "chinese": "底层加速结构",
+      "aliases": [
+        "底层加速结构"
+      ]
+    },
+    {
+      "english": "present mode",
+      "chinese": "呈现模式",
+      "aliases": [
+        "呈现模式",
+        "演示模式",
+        "展示模式"
+      ],
+      "normalize": true,
+      "variants": [
+        "present modes",
+        "presentation mode",
+        "presentation modes"
+      ]
+    },
+    {
+      "english": "queue submission",
+      "chinese": "队列提交",
+      "aliases": [
+        "队列提交"
+      ]
+    },
+    {
+      "english": "depth test",
+      "chinese": "深度测试",
+      "aliases": [
+        "深度测试"
+      ],
+      "variants": [
+        "depth tests"
+      ]
+    },
+    {
+      "english": "back-face culling",
+      "chinese": "背面剔除",
+      "aliases": [
+        "背面剔除",
+        "背面淘汰"
+      ]
+    },
+    {
+      "english": "memory heap",
+      "chinese": "内存堆",
+      "aliases": [
+        "内存堆"
+      ],
+      "variants": [
+        "memory heaps"
+      ]
+    },
+    {
+      "english": "host coherent",
+      "chinese": "主机一致",
+      "aliases": [
+        "主机一致",
+        "主机相干"
+      ],
+      "variants": [
+        "host-coherent"
+      ]
+    },
+    {
+      "english": "top-level acceleration structure",
+      "chinese": "顶层加速结构",
+      "aliases": [
+        "顶层加速结构"
+      ]
+    },
+    {
+      "english": "ray generation",
+      "chinese": "光线生成",
+      "aliases": [
+        "光线生成",
+        "射线生成"
+      ]
+    },
+    {
+      "english": "surface format",
+      "chinese": "表面格式",
+      "aliases": [
+        "表面格式",
+        "曲面格式"
+      ],
+      "normalize": true,
+      "variants": [
+        "surface formats"
+      ]
+    },
+    {
+      "english": "surface capabilities",
+      "chinese": "表面能力",
+      "aliases": [
+        "表面功能",
+        "表面能力",
+        "曲面能力"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "descriptor binding",
+      "chinese": "描述符绑定",
+      "aliases": [
+        "描述符绑定"
+      ],
+      "variants": [
+        "descriptor bindings"
+      ]
+    },
+    {
+      "english": "image aspect",
+      "chinese": "图像分量",
+      "aliases": [
+        "图像分量",
+        "图像方面"
+      ],
+      "normalize": true,
+      "variants": [
+        "image aspects"
+      ],
+      "context": {
+        "excludeAny": [
+          "aspect ratio"
+        ]
+      }
+    },
+    {
+      "english": "indirect draw",
+      "chinese": "间接绘制",
+      "aliases": [
+        "间接绘制"
+      ]
+    },
+    {
+      "english": "any hit",
+      "chinese": "任意命中",
+      "aliases": [
+        "任何命中",
+        "任意命中"
+      ],
+      "variants": [
+        "any-hit"
+      ]
+    },
+    {
+      "english": "bounding volume hierarchy",
+      "chinese": "包围体层次结构",
+      "aliases": [
+        "包围体层次结构",
+        "边界体积层次结构"
+      ]
+    },
+    {
+      "english": "primitive topology",
+      "chinese": "图元拓扑",
+      "aliases": [
+        "原始拓扑",
+        "图元拓扑"
+      ]
+    },
+    {
+      "english": "closest hit",
+      "chinese": "最近命中",
+      "aliases": [
+        "最近的命中",
+        "最近命中"
+      ],
+      "variants": [
+        "closest-hit"
+      ]
+    },
+    {
+      "english": "image subresource",
+      "chinese": "图像子资源",
+      "aliases": [
+        "图像子资源",
+        "映像子资源"
+      ],
+      "variants": [
+        "image subresources"
+      ]
+    },
+    {
+      "english": "resolve attachment",
+      "chinese": "解析附件",
+      "aliases": [
+        "解析附件",
+        "resolve附件"
+      ],
+      "variants": [
+        "resolve attachments"
+      ]
+    },
+    {
+      "english": "stencil test",
+      "chinese": "模板测试",
+      "aliases": [
+        "模板测试"
+      ]
+    },
+    {
+      "english": "front face",
+      "chinese": "正面",
+      "aliases": [
+        "正面",
+        "前面"
+      ]
+    },
+    {
+      "english": "sampled image",
+      "chinese": "采样图像",
+      "aliases": [
+        "采样图像",
+        "采样映像"
+      ],
+      "variants": [
+        "sampled images"
+      ]
+    },
+    {
+      "english": "non-coherent",
+      "chinese": "非一致",
+      "aliases": [
+        "非相干",
+        "非一致"
+      ]
+    },
+    {
+      "english": "atomic operation",
+      "chinese": "原子操作",
+      "aliases": [
+        "原子操作"
+      ],
+      "variants": [
+        "atomic operations"
+      ]
+    },
+    {
+      "english": "shader binding table",
+      "chinese": "着色器绑定表",
+      "aliases": [
+        "着色器绑定表"
+      ],
+      "variants": [
+        "shader binding tables"
+      ]
+    },
+    {
+      "english": "reference space",
+      "chinese": "参考空间",
+      "aliases": [
+        "参考空间"
+      ],
+      "variants": [
+        "reference spaces"
+      ]
+    },
+    {
+      "english": "model inference",
+      "chinese": "模型推理",
+      "aliases": [
+        "模型推理"
+      ]
+    },
+    {
+      "english": "write-after-read",
+      "chinese": "读后写",
+      "aliases": [
+        "读后写",
+        "读取后写入"
+      ],
+      "variants": [
+        "write after read"
+      ]
+    },
+    {
+      "english": "write-after-write",
+      "chinese": "写后写",
+      "aliases": [
+        "写后写",
+        "写入后写入"
+      ],
+      "variants": [
+        "write after write"
+      ]
+    }
+  ]
+}

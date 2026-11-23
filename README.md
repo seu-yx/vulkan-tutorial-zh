@@ -73,7 +73,33 @@ python scripts/local.py
 .venv/bin/python scripts/ci_gate.py --record
 ```
 
-`--skip-translate` 只构建，`--no-fetch` 使用已有上游，`--translate-limit` 限制新段落数。`glossary.json` 维护术语，`scripts/sync.py` 中的 `SEED` 校正常见标题。改变术语规则会使涉及的缓存身份改变，请避免无必要的全量改动。
+`--skip-translate` 只构建，`--no-fetch` 使用已有上游，`--translate-limit` 限制新段落数。`scripts/sync.py` 中的 `SEED` 校正常见标题。
+
+## 扩展术语
+
+日常补充术语请编辑 `terminology.json` 的 `terms` 数组。例如：
+
+```json
+{
+  "english": "present mode",
+  "chinese": "呈现模式",
+  "variants": ["present modes"],
+  "aliases": ["呈现模式", "演示模式", "展示模式"],
+  "normalize": true
+}
+```
+
+`english` 是悬浮提示和“保留英文术语”使用的名称；`chinese` 是推荐中文。`variants` 明确列出英文复数或其他形式，英文大小写和换行自动兼容。`aliases` 是现有译文中的说法；默认只加标注，设置 `normalize: true` 才统一为推荐中文。
+
+`exactAliases` 仅在整个英文段落或标题恰好是该术语时使用。例如 `presentation` 的 `"exactAliases": ["介绍"]` 可以修正单独的标题，同时保留其他段落中普通“介绍”的含义。
+
+可选 `context` 限制歧义词的使用范围：`{"requireAny": ["swapchain", "surface"], "excludeAny": ["demo"]}` 表示英文段落须包含至少一个前置词，且不能包含排除词。代码不作为匹配文本。匹配优先使用长术语，只有原英文中出现对应术语才处理中文别名；存在歧义或无法安全合并的内联格式会保留原文。
+
+`terminology.schema.json` 为支持 JSON Schema 的编辑器提供字段提示；构建时也会验证配置。修改后运行 `python scripts/local.py --sync --no-fetch --serve` 预览，或直接提交到 GitHub，由 Actions 重建发布。
+
+运行 `python scripts/audit_terminology.py` 可扫描全部已构建页面，将标注覆盖情况和待人工核对的例句输出到 `.local/terminology-audit-current.json`；该命令不会修改网页或翻译缓存。
+
+此配置只处理生成页面，保留英文、代码和 Google 译文缓存，无需重新翻译全站。`glossary.json` 是兼容历史缓存的翻译保护表，其整体哈希参与缓存身份；日常扩展使用 `terminology.json`。
 
 ## 项目结构
 
@@ -82,6 +108,7 @@ python scripts/local.py
 | `public/` | 静态阅读器；生成的数据和上游素材不提交到主分支 |
 | `scripts/` | AsciiDoc 渲染、Google 翻译、缓存导入导出、本地启动与 Git 检查 |
 | `translations/` | 可持久化的 Google 译文及已同步的上游版本 |
+| `terminology.json` / `terminology.schema.json` | 可扩展的术语显示、译法别名、英文变体和上下文规则 |
 | `.github/workflows/pages.yml` | 低频同步、测试、续译和 Pages 发布 |
 | `tests/` | 内容完整性、缓存隔离、链接、代码保护及本地启动检查 |
 | `deploy/` | 可选的自建 Linux 服务器部署示例 |
