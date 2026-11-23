@@ -12,6 +12,11 @@ original = {page['id']: page for page in rendered['pages']}
 ids = {page['id'] for page in catalog['pages']}
 errors = []
 assert ids == set(original), 'Generated catalog does not contain every source page'
+navigation = catalog.get('navigation', [])
+assert [(entry['title'], entry['depth'], entry.get('id')) for entry in navigation] == [
+    (entry['title'], entry['depth'], entry.get('id') if entry.get('id') in ids else None)
+    for entry in rendered['navigation']
+], 'Generated catalog does not preserve the official navigation hierarchy'
 for metadata in catalog['pages']:
     page = json.loads((root / 'public/data/pages' / (metadata['id'] + '.json')).read_text(encoding='utf-8'))
     soup = BeautifulSoup(page['html'], 'html.parser')

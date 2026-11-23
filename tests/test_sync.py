@@ -12,6 +12,24 @@ spec.loader.exec_module(sync)
 
 
 class MirrorTests(unittest.TestCase):
+    def test_navigation_retains_heading_only_entries_and_repeated_links(self):
+        entries = [
+            {"title": "Engine Architecture", "depth": 1},
+            {"id": "setup", "title": "Setup", "depth": 2},
+            {"id": "setup", "title": "Base Code", "depth": 3},
+        ]
+        key = sync.translation_key("Setup", {}, "glossary")
+        navigation = sync.navigation_metadata(entries, {"setup"}, {key: "设置"}, "glossary")
+        self.assertEqual([entry.get("id") for entry in navigation], [None, "setup", "setup"])
+        self.assertEqual([entry["depth"] for entry in navigation], [1, 2, 3])
+        self.assertEqual(navigation[1]["titleZh"], "设置")
+        self.assertEqual(navigation[2]["titleZh"], "基础代码")
+        self.assertNotIn("titleZh", navigation[0])
+
+    def test_missing_navigation_target_becomes_a_heading_without_a_broken_link(self):
+        entry = sync.navigation_metadata([{"id": "removed", "title": "Topic", "depth": 1}], set(), {}, "glossary")[0]
+        self.assertEqual(entry, {"title": "Topic", "depth": 1})
+
     def test_local_chapter_link_preserves_anchor(self):
         result = sync.route_link("01_Instance.html#creation", "03/00_Base", {"03/01_Instance"})
         self.assertEqual(result, "/?page=03%2F01_Instance#creation")
