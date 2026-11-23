@@ -15,3 +15,19 @@
 .sidebar-footer{gap:6px 8px}.sidebar-footer .plain-button{margin-left:0}.article-content pre{font-size:14px}.article-content table{font-size:14px}.toc-tip{line-height:1.8}.copy-code{padding:3px 9px}
 .page-attribution{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px}.page-attribution #page-license{font-weight:600;color:var(--text)}#page-copyright{white-space:pre-line;overflow-wrap:anywhere}
 @media(max-width:640px){.article-content{font-size:16px}.mode-button,.reader-toolbar,.term-setting,.article-subtitle,.article-meta,.page-nav-title{font-size:14px}.reader-toolbar{align-items:flex-start;gap:10px;flex-wrap:wrap}.translation-label{flex:1 1 220px}.term-setting{margin-left:auto}.article-meta{gap:6px 10px}.breadcrumb,.article-kicker,.unofficial-tag,.page-nav-label,.article-footer,.copy-code,.brand-subtitle{font-size:12px}.article-content pre{font-size:13px}.article-content table{font-size:14px}.page-navigation a{padding:14px}.sync-details{font-size:12px}.brand-subtitle{letter-spacing:.025em}.brand-name{font-size:18px}.brand-area{height:32px}.brand{align-items:center}}
+
+/* Keep navigation controls available while giving the document more reading space. */
+.menu-button{display:inline-grid;margin-right:10px;margin-left:-6px}
+.chapter-nav{min-height:0}
+.nav-tools{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 12px}
+.nav-tools button{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:1;min-height:32px;padding:5px 4px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--muted);font-size:14px;line-height:1.4;white-space:nowrap}
+.nav-tools button:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.nav-tools button:disabled{opacity:.45;cursor:default}
+.nav-tools svg{width:15px;height:15px}
+.search-box .search-clear{width:24px;height:24px;min-width:24px;padding:3px;margin:-3px -3px -3px 0}
+.search-box .search-clear svg{width:14px;height:14px}
+.search-box:has(.search-clear:not([hidden])) kbd{display:none}
+.reading-progress{position:absolute;left:0;right:0;bottom:0;height:2px;pointer-events:none}
+.reading-progress span{display:block;width:100%;height:100%;background:var(--accent);transform:scaleX(var(--reading-progress,0));transform-origin:left}
+@media(min-width:1000px){.sidebar{transition:transform .18s ease}main{transition:margin-left .18s ease}:root[data-sidebar=collapsed] .sidebar{transform:translateX(-100%);visibility:hidden;pointer-events:none}:root[data-sidebar=collapsed] main{margin-left:0}}
+@media print{.reading-progress{display:none!important}}

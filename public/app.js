@@ -21,7 +21,15 @@
     });
   }
   const storage = { get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; } }, set(key, value) { try { localStorage.setItem(key, value); } catch {} } };
-  const state = { catalog: null, page: null, mode: ['zh', 'en', 'dual'].includes(storage.get('vt-mode', 'zh')) ? storage.get('vt-mode', 'zh') : 'zh', terms: storage.get('vt-terms', 'false') === 'true', query: '', request: 0 };
+  function readGroupPreferences() {
+    const preferences = Object.create(null);
+    try {
+      const saved = JSON.parse(storage.get('vt-nav-groups', '{}'));
+      if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.entries(saved).forEach(([name, open]) => { if (typeof open === 'boolean') preferences[name] = open; });
+    } catch {}
+    return preferences;
+  }
+  const state = { catalog: null, page: null, mode: ['zh', 'en', 'dual'].includes(storage.get('vt-mode', 'zh')) ? storage.get('vt-mode', 'zh') : 'zh', terms: storage.get('vt-terms', 'false') === 'true', sidebarCollapsed: storage.get('vt-sidebar-collapsed', 'false') === 'true', navGroups: readGroupPreferences(), navDefaults: new Map(), navSearchScroll: null, query: '', request: 0 };
   let observer;
   let toastTimer;
   async function fetchDocument(url) {
@@ -41,12 +49,48 @@
   function notify(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 2300); }
   function syncSidebarAccess() {
     const compact = matchMedia('(max-width: 999px)').matches;
-    const closed = !document.body.classList.contains('menu-open');
+    const closed = compact ? !document.body.classList.contains('menu-open') : state.sidebarCollapsed;
     const sidebar = $('#sidebar');
-    if (compact && closed && sidebar.contains(document.activeElement)) $('#menu-toggle').focus();
-    sidebar.inert = compact && closed;
+    const toggle = $('#menu-toggle');
+    if (closed && sidebar.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+    sidebar.inert = closed;
+    const label = compact ? closed ? '打开章节目录' : '关闭章节目录' : closed ? '展开侧栏' : '收起侧栏';
+    toggle.setAttribute('aria-expanded', String(!closed)); toggle.setAttribute('aria-label', label); toggle.title = label;
   }
-  function setMenu(open) { document.body.classList.toggle('menu-open', open); $('#menu-toggle').setAttribute('aria-expanded', String(open)); $('#menu-toggle').setAttribute('aria-label', open ? '关闭章节目录' : '打开章节目录'); $('#menu-scrim').hidden = !open; syncSidebarAccess(); }
+  function setMenu(open) { open = matchMedia('(max-width: 999px)').matches && open; document.body.classList.toggle('menu-open', open); $('#menu-scrim').hidden = !open; syncSidebarAccess(); }
+  function setSidebarCollapsed(collapsed, persist = true) {
+    state.sidebarCollapsed = !!collapsed; document.documentElement.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
+    if (persist) storage.set('vt-sidebar-collapsed', String(state.sidebarCollapsed));
+    syncSidebarAccess();
+  }
+  function revealSidebar() { if (matchMedia('(max-width: 999px)').matches) setMenu(true); else setSidebarCollapsed(false); }
+  function saveGroupPreferences() { storage.set('vt-nav-groups', JSON.stringify(state.navGroups)); }
+  function clearSearch(render = true) {
+    state.query = ''; $('#chapter-search').value = '';
+    if ($('#search-clear')) $('#search-clear').hidden = true;
+    if (render && state.catalog) renderNavigation();
+  }
+  function setAllGroups(open) {
+    if (!state.catalog) return;
+    // Search only changes the temporary results view, never saved group choices.
+    if (state.query.trim()) { $$('.nav-group', $('#chapter-nav')).forEach(section => { section.open = open; }); return; }
+    state.catalog.pages.forEach(page => { state.navGroups[page.group || '教程章节'] = open; });
+    saveGroupPreferences(); renderNavigation();
+  }
+  function locateCurrentChapter() {
+    if (!state.page || !state.catalog) return;
+    const current = state.catalog.pages.find(page => page.id === state.page.id);
+    if (!current) return;
+    clearSearch(false); state.navGroups[current.group || '教程章节'] = true; saveGroupPreferences(); revealSidebar(); renderNavigation();
+    requestAnimationFrame(() => {
+      const nav = $('#chapter-nav'), active = $('a[aria-current="page"]', nav);
+      if (!active) return;
+      const navRect = nav.getBoundingClientRect(), linkRect = active.getBoundingClientRect();
+      const top = Math.max(0, nav.scrollTop + linkRect.top - navRect.top - (nav.clientHeight - linkRect.height) / 2);
+      nav.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      active.focus({ preventScroll: true });
+    });
+  }
   function setMode(mode) {
     state.mode = mode; storage.set('vt-mode', mode); document.documentElement.dataset.mode = mode; document.documentElement.lang = mode === 'en' ? 'en' : 'zh-CN';
     $$('.mode-button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mode === mode)));
@@ -64,17 +108,30 @@
     if (state.page) buildToc();
   }
   function renderNavigation() {
-    const nav = $('#chapter-nav'); nav.replaceChildren();
+    const nav = $('#chapter-nav'); let scrollTop = nav.scrollTop; nav.replaceChildren();
     const pages = state.catalog.pages || [];
     const query = state.query.trim().toLocaleLowerCase();
+    if (query && state.navSearchScroll === null) state.navSearchScroll = scrollTop;
+    if (!query && state.navSearchScroll !== null) { scrollTop = state.navSearchScroll; state.navSearchScroll = null; }
+    if ($('#search-clear')) $('#search-clear').hidden = !state.query.length;
     const compactQuery = query.replace(/[\s_\-]/g, '');
     const filtered = query ? pages.filter(page => { const text = `${page.title || ''} ${page.titleZh || ''} ${page.id}`.toLocaleLowerCase(); return text.includes(query) || text.replace(/[\s_\-]/g, '').includes(compactQuery); }) : pages;
     $('#search-summary').textContent = query ? `${filtered.length} 个匹配章节` : `${pages.length} 篇教程`;
-    if (!filtered.length) { const message = document.createElement('p'); message.className = 'empty-search'; message.textContent = '没有找到匹配章节，试试英文术语。'; nav.append(message); return; }
+    if (!filtered.length) { const message = document.createElement('p'); message.className = 'empty-search'; message.textContent = '没有找到匹配章节，试试英文术语。'; nav.append(message); nav.scrollTop = scrollTop; return; }
     const groups = new Map();
     filtered.forEach(page => { const group = page.group || '教程章节'; if (!groups.has(group)) groups.set(group, []); groups.get(group).push(page); });
     groups.forEach((items, name) => {
-      const section = document.createElement('details'); section.className = 'nav-group'; section.open = !!query || groups.size < 4 || items.some(page => page.id === state.page?.id) || (state.page === null && nav.children.length === 0);
+      const initialPage = state.page?.id || new URLSearchParams(location.search).get('page') || pages.find(page => page.id === '00_Introduction')?.id || pages[0]?.id;
+      if (!query && !state.navDefaults.has(name)) state.navDefaults.set(name, items.some(page => page.id === initialPage));
+      const preferredOpen = Object.hasOwn(state.navGroups, name) ? state.navGroups[name] : state.navDefaults.get(name) || false;
+      const section = document.createElement('details'); section.className = 'nav-group'; section.dataset.group = name; section.open = !!query || preferredOpen;
+      let displayedOpen = section.open;
+      section.addEventListener('toggle', () => {
+        if (!section.isConnected || section.open === displayedOpen) return;
+        displayedOpen = section.open;
+        if (state.query.trim()) return;
+        state.navGroups[name] = section.open; saveGroupPreferences();
+      });
       const summary = document.createElement('summary'); const label = document.createElement('span'); label.textContent = groupTitle(name); summary.append(label); const count = document.createElement('span'); count.className = 'group-count'; count.textContent = String(items.length); summary.append(count); section.append(summary);
       const list = document.createElement('ul');
       items.forEach(page => {
@@ -84,6 +141,7 @@
         li.append(link); list.append(li);
       }); section.append(list); nav.append(section);
     });
+    nav.scrollTop = scrollTop;
   }
   function updatePageHeading() {
     const page = state.page; const title = displayTitle(page);
@@ -204,16 +262,18 @@
     $('#about-translation').textContent = translation.total ? `${Number(translation.translated || 0).toLocaleString()} / ${Number(translation.total).toLocaleString()} 段落` : '翻译进度尚未记录';
   }
   async function init() {
-    setMode(state.mode); setMenu(false); $('#english-terms').checked = state.terms;
+    setMode(state.mode); setSidebarCollapsed(state.sidebarCollapsed, false); setMenu(false); $('#english-terms').checked = state.terms;
     window.addEventListener('resize', () => { if (!matchMedia('(max-width: 999px)').matches && document.body.classList.contains('menu-open')) setMenu(false); else syncSidebarAccess(); });
     $$('.mode-button').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
     $('#english-terms').addEventListener('change', event => { state.terms = event.target.checked; storage.set('vt-terms', String(state.terms)); applyTerms(); });
     $('#theme-toggle').addEventListener('click', () => { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; storage.set('vt-theme', theme); $('#theme-toggle').setAttribute('aria-label', `切换${theme === 'dark' ? '浅色' : '深色'}模式`); });
     $('#chapter-search').addEventListener('input', event => { state.query = event.target.value; if (state.catalog) renderNavigation(); });
-    $('#menu-toggle').addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open'))); $('#menu-scrim').addEventListener('click', () => setMenu(false));
+    $('#search-clear')?.addEventListener('click', () => { clearSearch(); $('#chapter-search').focus({ preventScroll: true }); });
+    $('#nav-expand-all')?.addEventListener('click', () => setAllGroups(true)); $('#nav-collapse-all')?.addEventListener('click', () => setAllGroups(false)); $('#nav-current')?.addEventListener('click', locateCurrentChapter);
+    $('#menu-toggle').addEventListener('click', () => { if (matchMedia('(max-width: 999px)').matches) setMenu(!document.body.classList.contains('menu-open')); else setSidebarCollapsed(!state.sidebarCollapsed); }); $('#menu-scrim').addEventListener('click', () => setMenu(false));
     const dialog = $('#about-dialog'); [$('#about-open'), $('#about-footer')].forEach(button => button.addEventListener('click', () => dialog.showModal())); $('#about-close').addEventListener('click', () => dialog.close()); dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } });
     $('#back-top').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); if (event.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable && !dialog.open) { event.preventDefault(); if (innerWidth < 1000) setMenu(true); $('#chapter-search').focus(); } });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); if (event.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) && !document.activeElement?.isContentEditable && !dialog.open) { event.preventDefault(); revealSidebar(); $('#chapter-search').focus({ preventScroll: true }); } });
     document.addEventListener('click', event => {
       const link = event.target.closest('a'); if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0 || link.target === '_blank') return;
       const url = new URL(link.href, location.href); if (url.origin !== location.origin) return;
