@@ -9,6 +9,7 @@
 - 中文、English、逐段中英对照，保留代码和 Vulkan API 名称。
 - 专业术语悬浮查看英文，也可切换为保留英文术语。
 - 章节搜索、页内目录、代码复制、深浅色主题、手机阅读。
+- GitHub 风格代码高亮，随深浅色主题切换，保留代码原文及复制功能。
 - 展示原文、固定版本源码链接、翻译进度及逐页许可。
 - 从官方 Git 提交增量更新，按段落复用 Google 译文，未译内容保留英文。
 
@@ -90,6 +91,8 @@ python scripts/local.py
 | `deploy/` | 可选的自建 Linux 服务器部署示例 |
 
 ## 贡献与许可
+
+代码高亮资源随站点自托管，采用 GitHub 浅色和深色配色。修改高亮语言或主题后，运行 `npm ci --ignore-scripts` 和 `npm run build:syntax`，并提交更新后的 `public/syntax.js`、`public/syntax.css`；Actions 发布时也会重新构建这些资源。
 
 请在 Issue 中提供章节链接、原文、现有译文和建议译文。代码贡献可通过 Pull Request 提交；提交前运行：
 

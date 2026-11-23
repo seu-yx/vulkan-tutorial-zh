@@ -2,7 +2,19 @@
   "name": "vulkan-tutorial-zh-mirror",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18" },
-  "scripts": { "build": "node scripts/build.mjs", "sync": "python scripts/sync.py" },
-  "dependencies": { "@asciidoctor/core": "3.0.4" }
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:syntax": "node scripts/build-syntax.mjs",
+    "sync": "python scripts/sync.py"
+  },
+  "dependencies": {
+    "@asciidoctor/core": "3.0.4",
+    "highlight.js": "11.12.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
 }

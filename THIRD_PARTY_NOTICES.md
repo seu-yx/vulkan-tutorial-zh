@@ -12,3 +12,11 @@
 `translations/google.jsonl` 包含对上述教程的机器翻译修改，适用对应原文的许可。它不是对教程内容的重新许可。生成的网站保留英文原文、原始源码链接、逐页许可，并明确标记非官方镜像及机器翻译。请以具体源文件的许可声明为准。
 
 上游完整说明：[Introduction / Attribution](https://docs.vulkan.org/tutorial/latest/00_Introduction.html)。上游仓库许可文本备份于 `LICENSES/UPSTREAM-LICENSE.txt`。Vulkan 为 Khronos Group 的注册商标。
+
+## 代码语法高亮
+
+`public/syntax.js` 使用 [highlight.js 11.12.0](https://github.com/highlightjs/highlight.js)，采用 BSD-3-Clause；版权属于 Ivan Sagalaev 和上游贡献者。`public/syntax.css` 基于该项目随附的 GitHub 与 GitHub Dark 官方主题（github.com，维护者 @Hirse），保留原配色，增加本站主题选择器和代码块布局适配。Slang 高亮明确使用 C++ 语法派生并补充着色器类型和系统语义，仅用于词法配色，不进行语言识别或编译检查。
+
+完整 highlight.js 许可见 `LICENSES/HIGHLIGHT-JS-LICENSE.txt`，也随站点发布为 `public/syntax.LICENSE.txt`。浏览器资源全部随站点托管，不从 CDN 加载。
+
+构建使用 [esbuild 0.28.2](https://github.com/evanw/esbuild)，采用 MIT，版权属于 Evan Wallace；完整许可见 `LICENSES/ESBUILD-LICENSE.txt`。esbuild 只参与本地/CI 构建，不作为浏览器运行依赖。
