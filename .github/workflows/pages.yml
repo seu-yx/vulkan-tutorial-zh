@@ -107,12 +107,17 @@ jobs:
       - name: Preserve translation progress in Git
         if: steps.gate.outputs.run == 'true'
         run: |
+          git status --short
           git add -- translations/google.jsonl translations/upstream.json
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git commit -m 'chore: update Google translations and upstream revision [skip ci]'
-            git pull --rebase origin main
+            git pull --rebase --autostash origin main
+            if [ -n "$(git ls-files --unmerged)" ]; then
+              echo '::error::Build output conflicts after restoring the working tree.'
+              exit 1
+            fi
             git push origin HEAD:main
           fi
       - name: Configure Pages
