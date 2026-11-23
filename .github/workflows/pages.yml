@@ -9,6 +9,8 @@ on:
       - tests/**
       - translations/**
       - glossary.json
+      - terminology.json
+      - terminology.schema.json
       - package.json
       - package-lock.json
       - requirements.txt
@@ -103,6 +105,7 @@ jobs:
             --import-cache translations/google.jsonl --export-cache translations/google.jsonl
           python scripts/ci_gate.py --record
           python tests/check_site.py
+          python scripts/audit_terminology.py
           touch public/.nojekyll
       - name: Preserve translation progress in Git
         if: steps.gate.outputs.run == 'true'
