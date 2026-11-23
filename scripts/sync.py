@@ -28,10 +28,12 @@ from bs4 import BeautifulSoup, NavigableString
 
 if __package__:
     from .translation_cache import cache_path, import_cache, export_cache
+    from .terminology import TermAnnotator
 else:
     # Direct CLI execution and importlib-based checks both resolve this sibling module.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from translation_cache import cache_path, import_cache, export_cache
+    from terminology import TermAnnotator
 
 ROOT = Path(__file__).resolve().parent.parent
 UPSTREAM_URL = "https://github.com/KhronosGroup/Vulkan-Tutorial.git"
@@ -87,7 +89,7 @@ def atomic_json(path: Path, value):
     os.replace(temporary, path)
 
 
-def navigation_metadata(entries, known_ids, cache, glossary_version):
+def navigation_metadata(entries, known_ids, cache, glossary_version, terminology=None):
     """Preserve the official hierarchy, reusing only exact cached title translations."""
     navigation = []
     for raw in entries:
@@ -100,6 +102,11 @@ def navigation_metadata(entries, known_ids, cache, glossary_version):
         translated = seed or cache.get(translation_key(raw["title"], {}, glossary_version))
         if translated:
             entry["titleZh"] = BeautifulSoup(translated, "html.parser").get_text()
+            if terminology:
+                english = BeautifulSoup(f'<span>{html.escape(raw["title"])}</span>', "html.parser").span
+                chinese = BeautifulSoup(f'<span>{html.escape(entry["titleZh"])}</span>', "html.parser").span
+                terminology.annotate(english, chinese)
+                entry["titleZh"] = chinese.get_text()
         navigation.append(entry)
     return navigation
 
@@ -182,6 +189,15 @@ def restore_translation(translated: str, tokens: dict[str, str]):
     for token, original in tokens.items():
         safe = safe.replace(token, original)
     return safe
+
+
+def local_term_translation(plain, tokens):
+    """A block made entirely of protected terms needs no machine translation."""
+    if re.search(r"[A-Za-z]{3}", TOKEN_RE.sub("", plain)):
+        return None
+    if not any('data-term=' in value for value in tokens.values()):
+        return None
+    return restore_translation(plain, tokens)
 
 
 def wrap_bilingual_pair(soup, block):
@@ -423,6 +439,9 @@ def sync(args):
     rendered = json.loads(rendered_path.read_text(encoding="utf-8"))
     glossary = json.loads((ROOT / "glossary.json").read_text(encoding="utf-8"))
     version = hashlib.sha256(json.dumps(glossary, sort_keys=True).encode()).hexdigest()
+    # Display annotations never enter Google's v5 identity or stored HTML. Updating
+    # terminology can therefore improve every cached page without retranslating it.
+    terminology = TermAnnotator(json.loads((ROOT / "terminology.json").read_text(encoding="utf-8")))
     database = sqlite3.connect(state / "translations.sqlite3")
     database.execute("CREATE TABLE IF NOT EXISTS translations (key TEXT PRIMARY KEY, source TEXT NOT NULL, html TEXT NOT NULL, translated_at TEXT NOT NULL)")
     if cache_input:
@@ -460,6 +479,7 @@ def sync(args):
         chinese.clear()
         fragment = BeautifulSoup(value, "html.parser")
         for child in list(fragment.contents): chinese.append(child)
+        terminology.annotate(english, chinese)
         pair.append(chinese)
         pair["class"] = [class_name for class_name in pair.get("class", []) if class_name != "vt-pending"]
 
@@ -504,7 +524,13 @@ def sync(args):
             # Translation is per short paragraph; oversized generated listings stay in English.
             if len(block.get_text()) > 4500: continue
             plain, tokens = prepare_translation(block, glossary)
-            if not re.search(r"[A-Za-z]{3}", TOKEN_RE.sub("", plain)): continue
+            if not re.search(r"[A-Za-z]{3}", TOKEN_RE.sub("", plain)):
+                local = local_term_translation(plain, tokens)
+                if local is not None:
+                    inject(wrap_bilingual_pair(soup, block), local)
+                    page["translated"] += 1
+                    page["total"] += 1
+                continue
             pair = wrap_bilingual_pair(soup, block)
             register(plain, tokens, page, pair)
         page["html"] = str(soup)
@@ -557,12 +583,18 @@ def sync(args):
                 page["html"] = str(soup)
                 page["resolved"].clear()
             document = {key: value for key, value in page.items() if key != "resolved"}
+            if page.get("titleZh"):
+                original_title = BeautifulSoup(f'<span>{html.escape(page["title"])}</span>', "html.parser").span
+                chinese_title = BeautifulSoup(f'<span>{html.escape(page["titleZh"])}</span>', "html.parser").span
+                terminology.annotate(original_title, chinese_title)
+                page["titleZh"] = document["titleZh"] = chinese_title.get_text()
+                document["titleZhHtml"] = chinese_title.decode_contents()
             document["stats"] = {"translated": page["translated"], "total": page["total"]}
             atomic_json(data / "pages" / (page["id"] + ".json"), document)
         dirty.clear()
         atomic_json(data / "catalog.json", {
             "pages": [{key: value for key, value in page.items() if key not in ("html", "resolved", "sourceUrl", "originalUrl")} for page in pages],
-            "navigation": navigation_metadata(raw_navigation, known_ids, cache, version),
+            "navigation": navigation_metadata(raw_navigation, known_ids, cache, version, terminology),
             "upstream": {"commit": commit, "syncedAt": now, "url": UPSTREAM_URL[:-4], "branch": "main"},
             "translation": {"translated": sum(page["translated"] for page in pages), "total": sum(page["total"] for page in pages),
                             "provider": PROVIDER, "providerId": "google", "updatedAt": utcnow(), "status": status, "pending": len(jobs)},
