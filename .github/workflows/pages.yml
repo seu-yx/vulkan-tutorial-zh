@@ -1,0 +1,140 @@
+name: Sync Vulkan tutorial and publish Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - public/**
+      - scripts/**
+      - tests/**
+      - translations/**
+      - glossary.json
+      - package.json
+      - package-lock.json
+      - requirements.txt
+      - .github/workflows/pages.yml
+  schedule:
+    # UTC 20:23 = 04:23 the following day in Asia/Shanghai.
+    - cron: '23 20 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: Rebuild even when upstream is unchanged
+        type: boolean
+        default: false
+      translate_limit:
+        description: Maximum new Google translations for this run
+        type: number
+        default: 500
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vulkan-pages-and-sync
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      pages: read
+    outputs:
+      publish: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Check the upstream Git commit
+        id: gate
+        env:
+          FORCE_BUILD: ${{ inputs.force_build || false }}
+        run: |
+          if [ "$FORCE_BUILD" = "true" ]; then
+            python scripts/ci_gate.py --force
+          else
+            python scripts/ci_gate.py
+          fi
+      - name: Set up Node.js
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Set up Python
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Restore the upstream Git checkout and render cache
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .local/upstream
+            .local/rendered.json
+          key: vulkan-upstream-${{ runner.os }}-${{ steps.gate.outputs.upstream_sha }}
+          restore-keys: vulkan-upstream-${{ runner.os }}-
+      - name: Install build dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          python -m pip install -r requirements.txt
+      - name: Test the mirror pipeline
+        if: steps.gate.outputs.run == 'true'
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Sync Git changes and translate a bounded batch
+        if: steps.gate.outputs.run == 'true'
+        env:
+          TRANSLATE_LIMIT: ${{ inputs.translate_limit || 500 }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if ! [[ "$TRANSLATE_LIMIT" =~ ^[0-9]+$ ]] || [ "$TRANSLATE_LIMIT" -lt 1 ] || [ "$TRANSLATE_LIMIT" -gt 500 ]; then
+            echo '::error::translate_limit must be an integer from 1 to 500'
+            exit 1
+          fi
+          python scripts/sync.py --provider google --workers 1 --delay 2 \
+            --translate-limit "$TRANSLATE_LIMIT" --translation-seconds 600 \
+            --import-cache translations/google.jsonl --export-cache translations/google.jsonl
+          python scripts/ci_gate.py --record
+          python tests/check_site.py
+          touch public/.nojekyll
+      - name: Preserve translation progress in Git
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git add -- translations/google.jsonl translations/upstream.json
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore: update Google translations and upstream revision [skip ci]'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Configure Pages
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/configure-pages@v5
+      - name: Upload the static website
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+  deploy:
+    if: needs.build.outputs.publish == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
