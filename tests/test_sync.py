@@ -58,6 +58,17 @@ class MirrorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sync.restore_translation("translation omitted the API token", {"__VT00000__": "<code>vkCreateInstance</code>"})
 
+    def test_term_only_headings_are_translated_without_google(self):
+        heading = BeautifulSoup('<h2>Fragment shader</h2>', 'html.parser').h2
+        plain, tokens = sync.prepare_translation(heading, {'fragment shader': '片段着色器'})
+        translated = sync.local_term_translation(plain, tokens)
+        self.assertIn('data-term="Fragment shader"', translated)
+        self.assertIn('片段着色器', translated)
+
+    def test_code_only_blocks_are_not_treated_as_translatable_terms(self):
+        self.assertIsNone(sync.local_term_translation('__VT00000__', {'__VT00000__': '<code>vk::ShaderModule</code>'}))
+        self.assertIsNone(sync.local_term_translation('Use __VT00000__', {'__VT00000__': '<span data-term="shader">着色器</span>'}))
+
     def test_google_marker_decoration_can_change_without_losing_identity(self):
         tokens = {"__VT00000__": "<a>", "__VT00001__": "</a>"}
         for translated in ("__ VT00000 __ VT00001_ 归属", "_ VT00000 _ 内容 __ VT00001 __", "＿vt０００００＿内容__VT00001__"):
