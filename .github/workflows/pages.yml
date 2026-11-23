@@ -83,6 +83,7 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
+          npm run build:syntax
           python -m pip install -r requirements.txt
       - name: Test the mirror pipeline
         if: steps.gate.outputs.run == 'true'
