@@ -1,0 +1,8 @@
+{
+  "name": "vulkan-tutorial-zh-mirror",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": { "build": "node scripts/build.mjs", "sync": "python scripts/sync.py" },
+  "dependencies": { "@asciidoctor/core": "3.0.4" }
+}

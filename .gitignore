@@ -1,0 +1,16 @@
+*.pem
+*.key
+.local/
+.venv/
+node_modules/
+public/data/
+public/assets/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.tar.gz
+dist/
+*.zip
+
