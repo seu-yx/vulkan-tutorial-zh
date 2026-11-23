@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN" data-mode="zh" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Vulkan 官方教程的非官方中文镜像，支持中英切换、双语对照和术语原文。">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#a82432">
+  <title>Vulkan 教程 · 中文镜像</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a82432'/%3E%3Cpath d='M15 18h9l8 25 8-25h9L36 49h-8z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./preferences.js"></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="site-header">
+    <div class="brand-area">
+      <button class="icon-button menu-button" id="menu-toggle" aria-label="打开章节目录" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <a class="brand" href="./" aria-label="Vulkan 教程首页"><span class="brand-mark" aria-hidden="true">V</span><span class="brand-name">Vulkan<span class="brand-subtitle">教程 · 中文镜像</span></span></a>
+    </div>
+    <div class="header-actions">
+      <nav class="language-switch" aria-label="阅读语言"><button data-mode="zh" class="mode-button" aria-pressed="true">中文</button><button data-mode="en" class="mode-button" aria-pressed="false">English</button><button data-mode="dual" class="mode-button" aria-pressed="false">中英对照</button></nav>
+      <button class="icon-button" id="theme-toggle" aria-label="切换深色模式" title="切换深色模式"><svg viewBox="0 0 24 24" aria-hidden="true" class="theme-moon"><path d="M20.5 13a8.5 8.5 0 0 1-9.5-9.5A8.5 8.5 0 1 0 20.5 13Z"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></svg></button>
+    </div>
+  </header>
+  <div class="menu-scrim" id="menu-scrim" hidden></div>
+  <aside class="sidebar" id="sidebar" aria-label="教程章节目录">
+    <div class="sidebar-heading"><span class="eyebrow">学习文档</span><span class="version-tag">latest</span></div>
+    <label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="chapter-search" type="search" placeholder="搜索章节…" aria-label="搜索中英文章节标题" autocomplete="off"><kbd>/</kbd></label>
+    <div id="search-summary" class="search-summary" aria-live="polite"></div>
+    <nav class="chapter-nav" id="chapter-nav" aria-label="章节"><p class="nav-loading">正在读取章节目录…</p></nav>
+    <div class="sidebar-footer"><span class="sync-light" aria-hidden="true"></span><span id="sync-time">与官方源码同步</span><button id="about-open" class="plain-button">关于镜像</button></div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <div class="reading-layout">
+      <div class="document-column">
+        <div class="breadcrumb"><span>Vulkan 教程</span><span aria-hidden="true">/</span><span id="breadcrumb-current">开始学习</span></div>
+        <section class="article-header" aria-labelledby="article-title">
+          <div class="article-kicker"><span class="small-square" aria-hidden="true"></span><span id="article-group">VULKAN TUTORIAL</span><span class="unofficial-tag">非官方镜像</span></div>
+          <h1 id="article-title">Vulkan 教程</h1>
+          <p class="article-subtitle" id="article-subtitle" hidden></p>
+          <div class="article-meta"><span id="reading-time">正在加载内容</span><span class="meta-separator" aria-hidden="true">·</span><a id="original-link" target="_blank" rel="noopener noreferrer" href="https://docs.vulkan.org/tutorial/latest/00_Introduction.html">官方原文 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3H3v10h10v-3M9 3h4v4M7 9l6-6"/></svg></a><span class="meta-separator" aria-hidden="true">·</span><a id="source-link" target="_blank" rel="noopener noreferrer" href="https://github.com/KhronosGroup/Vulkan-Tutorial">章节源码</a></div>
+        </section>
+        <div class="reader-toolbar"><div class="translation-label"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 5h10M7 2v3M4 5c.5 4 3 7 7 9M10 5c-.5 4-3 7-7 9M12 17l3-8 3 8M13 14h4"/></svg><span id="translation-status">机器翻译 · 可随时对照原文</span></div><label class="term-setting"><input type="checkbox" id="english-terms"><span>保留英文术语</span></label></div>
+        <div id="notice" class="notice" hidden></div>
+        <article class="article-content" id="article-content" aria-busy="true"><div class="loading-state"><span class="loading-ring" aria-hidden="true"></span><p>正在准备教程内容…</p></div></article>
+        <nav class="page-navigation" aria-label="前后章节"><a id="previous-page" hidden><span class="page-nav-label">上一章</span><span class="page-nav-title"></span></a><a id="next-page" hidden><span class="page-nav-label">下一章</span><span class="page-nav-title"></span></a></nav>
+        <footer class="article-footer"><div class="page-attribution" id="page-attribution" hidden><p id="page-license" hidden></p><p id="page-copyright" hidden></p></div><p>内容来自 <a href="https://github.com/KhronosGroup/Vulkan-Tutorial" target="_blank" rel="noopener noreferrer">KhronosGroup / Vulkan-Tutorial</a>。本站为非官方中文镜像，译文由机器辅助生成，请结合英文原文阅读。</p><p>教程主体遵循 <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>；部分扩展与附件以原有许可为准。<a href="./LICENSE.txt" target="_blank" rel="noopener noreferrer">原始许可</a> · <a href="./NOTICE.txt" target="_blank" rel="noopener noreferrer">署名与修改说明</a> · <button class="plain-button" id="about-footer">同步与翻译说明</button></p></footer>
+      </div>
+      <aside class="toc" aria-label="本页目录"><div class="toc-label">本页内容</div><nav id="toc-nav"></nav><div class="toc-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></svg><p>术语下的虚线表示可悬浮查看英文原文，键盘聚焦同样可用。</p></div><button class="back-top plain-button" id="back-top">回到顶部</button></aside>
+    </div>
+  </main>
+  <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><h2 id="about-title">关于这个镜像</h2><button class="icon-button" id="about-close" aria-label="关闭说明"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p>这是 Vulkan 官方教程的非官方中文镜像。英文内容直接构建自 KhronosGroup 的公开源码，代码、API 名称和章节中的原始许可声明会保留。</p><dl class="sync-details"><dt>上游版本</dt><dd id="about-commit">—</dd><dt>最近同步</dt><dd id="about-synced">—</dd><dt>翻译进度</dt><dd id="about-translation">—</dd></dl><p>译文仅使用 Google 免费网页翻译通道生成，并按段落缓存。该接口没有稳定性承诺；遇到限流或翻译失败时保留英文，后续同步会继续补译。机器翻译可能存在误差，技术细节请参照英文原文。</p><p>中文、英文与中英对照模式可以随时切换。将指针悬浮在带虚线的术语上可查看英文，也可以勾选“保留英文术语”。阅读偏好仅保存在当前浏览器。</p><a class="dialog-link" href="https://github.com/KhronosGroup/Vulkan-Tutorial" target="_blank" rel="noopener noreferrer">访问教程上游仓库</a></dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
