@@ -159,6 +159,7 @@
   }
   function prepareContent() {
     const content = $('#article-content');
+    window.VulkanSyntax?.highlight(content);
     // Asciidoctor document headers are already represented by the reader header.
     $$('h1', content).forEach(heading => { if (heading.textContent.trim() === state.page.title?.trim() || heading.textContent.trim() === state.page.titleZh?.trim()) { const pair = heading.closest('.vt-pair'); if (pair) pair.classList.add('duplicate-title'); else heading.classList.add('duplicate-title'); } });
     $$('pre', content).forEach(pre => {
