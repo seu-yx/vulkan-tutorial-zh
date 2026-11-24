@@ -38,7 +38,7 @@ else:
 ROOT = Path(__file__).resolve().parent.parent
 UPSTREAM_URL = "https://github.com/KhronosGroup/Vulkan-Tutorial.git"
 PROVIDER = "Google Translate（免费网页接口，非 SLA API）"
-TOKEN_RE = re.compile(r"__VT(\d{5})__")
+TOKEN_RE = re.compile(r"__VT([0-9]{5})__")
 API_RE = r"\b(?:vk::[\w:]+|vk[A-Z]\w+|VK_[A-Z0-9_]+)\b"
 SEED = {
     "Khronos Vulkan® Tutorial": "Khronos Vulkan® 教程",
@@ -183,9 +183,11 @@ def prepare_translation(block, glossary):
 def restore_translation(translated: str, tokens: dict[str, str]):
     # Google sometimes rewrites only marker decoration (spaces, underscore width/count or VT case).
     # Retain the exact five-digit identity; a missing or duplicated identity is still an error.
+    # Match intact markers first so adjacent English does not cause the loose form to split them.
     translated = re.sub(
-        r"(?<![A-Za-z0-9])(?:[_＿]\s*)*[Vv][Tt]\s*([0-9０-９]{5})(?:\s*[_＿])*(?![A-Za-z0-9])",
-        lambda match: "__VT" + unicodedata.normalize("NFKC", match.group(1)) + "__", translated)
+        TOKEN_RE.pattern + r"|(?<![A-Za-z0-9])(?:[_＿]\s*)*[Vv][Tt]\s*(?P<loose>[0-9０-９]{5})(?:\s*[_＿])*(?![A-Za-z0-9])",
+        lambda match: "__VT" + unicodedata.normalize("NFKC", match["loose"]) + "__"
+        if match["loose"] else match[0], translated)
     actual = {match.group(0) for match in TOKEN_RE.finditer(translated)}
     if actual != set(tokens):
         raise ValueError("Translation lost or invented a protected token identity")
@@ -196,6 +198,17 @@ def restore_translation(translated: str, tokens: dict[str, str]):
     for token, original in tokens.items():
         safe = safe.replace(token, original)
     return safe
+
+
+def load_reviewed_translations(path):
+    """Load source-keyed corrections separately from Google's raw cache."""
+    reviewed = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(reviewed, dict) or any(
+        not re.fullmatch(r"[0-9a-f]{64}", key) or not isinstance(text, str) or not text.strip()
+        for key, text in reviewed.items()
+    ):
+        raise ValueError("Reviewed translations must map source cache keys to translation text")
+    return reviewed
 
 
 def local_term_translation(plain, tokens):
@@ -474,6 +487,7 @@ def sync(args):
     rendered = json.loads(rendered_path.read_text(encoding="utf-8"))
     glossary = json.loads((ROOT / "glossary.json").read_text(encoding="utf-8"))
     version = hashlib.sha256(json.dumps(glossary, sort_keys=True).encode()).hexdigest()
+    reviewed = load_reviewed_translations(ROOT / "translations/reviewed.json")
     # Display annotations never enter Google's v5 identity or stored HTML. Updating
     # terminology can therefore improve every cached page without retranslating it.
     terminology = TermAnnotator(json.loads((ROOT / "terminology.json").read_text(encoding="utf-8")))
@@ -493,12 +507,15 @@ def sync(args):
         key = translation_key(original, tokens, version)
         active_google_keys.add(key)
         seed = SEED_CASEFOLD.get(original.strip().casefold())
-        value = html.escape(seed) if seed else cache.get(key)
+        if key in reviewed:
+            value = restore_translation(reviewed[key], tokens)
+        else:
+            value = html.escape(seed) if seed else cache.get(key)
         if value is not None:
             if title:
                 page["titleZh"] = BeautifulSoup(value, "html.parser").get_text()
             else:
-                inject(target, value)
+                inject(target, value, reviewed_source=key in reviewed)
             page["translated"] += 1
         else:
             job = jobs.setdefault(key, {"text": original, "tokens": tokens, "targets": []})
@@ -506,7 +523,7 @@ def sync(args):
             job["targets"].append((page, key, title))
         page["total"] += 1
 
-    def inject(pair, value):
+    def inject(pair, value, *, reviewed_source=False):
         english = pair.find(class_="vt-en", recursive=False)
         chinese = copy.copy(english)
         chinese["class"] = [class_name for class_name in chinese.get("class", []) if class_name != "vt-en"] + ["vt-zh"]
@@ -515,6 +532,8 @@ def sync(args):
         fragment = BeautifulSoup(value, "html.parser")
         for child in list(fragment.contents): chinese.append(child)
         terminology.annotate(english, chinese)
+        if reviewed_source:
+            chinese["data-vt-reviewed"] = "true"
         pair.append(chinese)
         pair["class"] = [class_name for class_name in pair.get("class", []) if class_name != "vt-pending"]
 

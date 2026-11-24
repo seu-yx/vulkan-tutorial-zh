@@ -172,15 +172,17 @@ jobs:
           fi
           python tests/check_site.py
           python scripts/audit_terminology.py
+          python scripts/audit_translation_quality.py
           touch public/.nojekyll
       - name: Save the audit and polish checkpoint
-        if: always() && steps.gate.outputs.run == 'true' && vars.POLISH_ENABLED != 'false'
+        if: always() && steps.gate.outputs.run == 'true'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: polish-progress-${{ github.run_id }}
           path: |
             .local/polish-auto.json
+            .local/translation-quality.json
             translations/polish.json
             translations/polish-state.json
           if-no-files-found: ignore

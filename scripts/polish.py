@@ -31,6 +31,7 @@ MAX_CHAPTER_INPUT_BYTES = 200_000
 CHAPTER_TIMEOUT_SECONDS = 180
 MAX_BLOCK_LENGTH = MAX_CHAPTER_INPUT_BYTES
 MIN_PROSE_HAN = 2
+MAX_REVIEW_ISSUE_LENGTH = 240
 STATE_VERSION = 2
 KEY = re.compile(r"[0-9a-f]{64}")
 ELIGIBLE_TAGS = {"p", "h2", "h3", "h4", "h5", "h6", "li", "td", "th", "dt", "dd", "span"}
@@ -48,11 +49,12 @@ PROMPT = """你是简体中文 Vulkan 教程校对者。本次输入只有一篇
 原样保留 Chinese 中每个 ⟦数字⟧ 占位符，只能出现一次，顺序保持不变。
 protected 字段按顺序解释占位符。不要把这些内容再写进译文，不要加入新的数字、英文或标记。
 editable=false 的块只用于上下文，不能修改；代码清单只给位置标记，不参与校订。
-完整检查本章全部可编辑块。已经自然的块不要放入 edits，只提供确实需要修改的块的完整 Chinese 字符串。
+完整检查本章全部可编辑块。已准确自然的块可以省略。edits 只包含能在上述限制内安全修正的块的完整 Chinese 字符串。
+遇到无法安全修正的明显问题（如技术含义或否定反了、普通英文被占位符锁住），用 issues 记录篇内短 id 与单行原因（最多 240 字符）。同一个 id 只能出现在 edits 或 issues 中。没有问题时返回空 issues 对象。
 仅输出一个 JSON 对象：chapter_id 与 chapter_key 原样回显 chapter.id 与 chapter.key，
 reviewed_complete 必须为 true，reviewed_count 必须等于 chapter.editable_count，edits 是篇内短 id 到新 Chinese 字符串的对象。
-未返回的可编辑块表示已经检查且保留当前中文。不要输出不存在或只读块的 id。
-输出前再次核对英文中的否定、量词、条件、先后顺序和约束；无法确认仍保持技术含义时原样返回。
+未返回的可编辑块表示已经检查且通过。不要输出不存在或只读块的 id。
+输出前再次核对英文中的否定、量词、条件、先后顺序和约束；发现无法安全修正的问题时在 issues 中报告。
 """
 
 
@@ -134,6 +136,8 @@ def paragraphs(soup, page_id, counts=None):
         english = pair.find(class_="vt-en", recursive=False)
         chinese = pair.find(class_="vt-zh", recursive=False)
         if english is None or chinese is None:
+            continue
+        if chinese.get("data-vt-reviewed") == "true":
             continue
         if english.name not in ELIGIBLE_TAGS or chinese.name not in ELIGIBLE_TAGS:
             continue
@@ -424,20 +428,32 @@ def load_chapter(data, page_id, entries):
     return Chapter(page_id, identity, page.get("title", page_id), page.get("titleZh", ""), units, editable, bases, counts)
 
 
+def _valid_review_reason(reason):
+    return (isinstance(reason, str) and 0 < len(reason) <= MAX_REVIEW_ISSUE_LENGTH
+            and bool(reason.strip()) and reason.isprintable())
+
+
 def review_chapter(chapter, answer, entries):
     fields = {"chapter_id", "chapter_key", "reviewed_complete", "reviewed_count", "edits"}
-    if (not isinstance(answer, dict) or set(answer) != fields
+    if (not isinstance(answer, dict) or not fields <= answer.keys() <= fields | {"issues"}
             or answer["chapter_id"] != chapter.page_id or answer["chapter_key"] != chapter.key
             or answer["reviewed_complete"] is not True or type(answer["reviewed_count"]) is not int
             or answer["reviewed_count"] != len(chapter.editable) or not isinstance(answer["edits"], dict)
             or set(answer["edits"]) - chapter.editable.keys()):
         raise InvalidPolishResponse("Missing complete-chapter confirmation, wrong identity/count, or unknown editable ID")
+    issues = answer.get("issues", {})
+    if (not isinstance(issues, dict) or issues.keys() - chapter.editable.keys()
+            or issues.keys() & answer["edits"].keys() or not all(map(_valid_review_reason, issues.values()))):
+        raise InvalidPolishResponse("Invalid review issue ID, overlapping edit, or invalid reason")
     updated, audit = dict(entries), []
-    rejected = 0
     for short_id, block in chapter.editable.items():
         base = chapter.bases[block.key]
         item = {"id": short_id, "cache_key": block.key, "english": block.english,
                 "google": base.chinese.get_text(), "current": block.chinese.get_text()}
+        if short_id in issues:
+            item.update(status="needs_review", reason=issues[short_id], polished=item["current"])
+            audit.append(item)
+            continue
         edited = answer["edits"].get(short_id, block.draft)
         try:
             if edited != block.draft:
@@ -448,7 +464,6 @@ def review_chapter(chapter, answer, entries):
                 updated[block.key] = edited
             item.update(status="unchanged" if edited == block.draft else "edited", polished=block.chinese.get_text())
         except ValueError as error:
-            rejected += 1
             item.update(status="rejected", reason=str(error), polished=item["current"])
         audit.append(item)
     # The chapter was explicitly reviewed. Unsafe suggestions remain rejected, not a reason to bill the chapter again.
@@ -466,7 +481,8 @@ def preview(data, page_id, entries, limit, destination, model, *, seconds=420):
     write_json(destination / "review.json", {"page": page_id, "chapter_key": chapter.key,
                "input_bytes": chapter.input_bytes, "complete": complete, "paragraphs": audit}, indent=2)
     accepted = sum(item["status"] == "edited" for item in audit)
-    print(f"Copilot chapter preview: {len(audit)} blocks, {accepted} local edits; complete={complete}")
+    issues = sum(item["status"] in {"needs_review", "rejected"} for item in audit)
+    print(f"Copilot chapter preview: {len(audit)} blocks, {accepted} local edits, {issues} blocks for manual review; complete={complete}")
 
 
 def _timestamp(value):
@@ -507,6 +523,15 @@ def read_state(path):
                 or type(failure.get("quarantined")) is not bool):
             raise ValueError("Invalid polish failure record")
         _timestamp(failure.get("retry_after"))
+    review_issues = state.get("review_issues", {})
+    if not isinstance(review_issues, dict):
+        raise ValueError("Invalid polish review issues")
+    for key, issues in review_issues.items():
+        if (not KEY.fullmatch(key) or not isinstance(issues, list) or not issues
+                or any(not isinstance(issue, dict) or set(issue) != {"cache_key", "reason"}
+                       or not isinstance(issue["cache_key"], str) or not KEY.fullmatch(issue["cache_key"])
+                       or not _valid_review_reason(issue["reason"]) for issue in issues)):
+            raise ValueError("Invalid polish review issue record")
     _timestamp(state.get("retry_after"))
     return state
 
@@ -542,6 +567,7 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
     oversized = {item["key"] for item in candidates if item["input_bytes"] > MAX_CHAPTER_INPUT_BYTES}
     updated = dict(entries)
     failures = {key: value for key, value in previous.get("failures", {}).items() if key in keys and key not in completed}
+    review_issues = {key: value for key, value in previous.get("review_issues", {}).items() if key in completed}
     changed_keys = {key for page, key in chapter_keys.items() if previous.get("chapters", {}).get(page) != key} if initialized else set()
     priority = (set(previous["priority"]) | changed_keys) & keys
     priority.difference_update(completed)
@@ -567,7 +593,8 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
         state = {
             "version": STATE_VERSION, "keys": sorted(keys), "chapters": dict(sorted(chapter_keys.items())),
             "completed": sorted(completed), "priority": sorted(priority),
-            "failures": dict(sorted(failures.items())), "eligible": len(keys),
+            "failures": dict(sorted(failures.items())), "review_issues": dict(sorted(review_issues.items())),
+            "eligible": len(keys),
             "processed": len(completed), "pending": len(remaining),
             "priority_pending": len(priority), "backfill_pending": len(remaining - priority),
             "rejected": sum(bool(item.get("quarantined")) for item in failures.values()),
@@ -582,7 +609,8 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
             "attempted": attempted, "pending": len(remaining), "deferred": len(oversized),
             "deferred_chapters": [item for item in candidates if item["key"] in oversized],
             "stopped_reason": stop, "retry_after": state["retry_after"],
-            "chapters": chapter_reviews, "paragraphs": review,
+            "chapters": chapter_reviews, "paragraphs": review, "review_issues": state["review_issues"],
+            "review_issue_blocks": sum(map(len, review_issues.values())),
         }
         write_json(report_file, report, indent=2)
         return report
@@ -624,10 +652,18 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                     answer = copilot(chapter.metadata, chapter.units, model, timeout=timeout)
                     updated, chapter_audit, complete = review_chapter(chapter, answer, updated)
                     review.extend(dict(result, page=chapter.page_id) for result in chapter_audit)
+                    flagged = sum(result["status"] == "needs_review" for result in chapter_audit)
                     chapter_result.update(status="complete" if complete else "partial",
                                           edited=sum(result["status"] == "edited" for result in chapter_audit),
-                                          rejected=sum(result["status"] == "rejected" for result in chapter_audit))
-                    if complete and chapter_result["rejected"]:
+                                          rejected=sum(result["status"] == "rejected" for result in chapter_audit),
+                                          needs_review=flagged)
+                    unresolved = [{"cache_key": result["cache_key"], "reason": result["reason"]}
+                                  for result in chapter_audit if result["status"] in {"needs_review", "rejected"}]
+                    if complete and unresolved:
+                        review_issues[chapter.key] = unresolved
+                    if complete and flagged:
+                        chapter_result["status"] = "complete_with_review_issues"
+                    elif complete and chapter_result["rejected"]:
                         chapter_result["status"] = "complete_with_rejections"
                 except InvalidPolishResponse as error:
                     complete = False
@@ -670,7 +706,8 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
     report = checkpoint()
     report.update(applied=applied, changed_pages=changed)
     write_json(report_file, report, indent=2)
-    print(f"Copilot auto: {len(keys)} eligible chapters, {attempted} chapter calls, {applied} local edits applied, {report['pending']} chapters pending; {stop}")
+    print(f"Copilot auto: {len(keys)} eligible chapters, {attempted} chapter calls, {applied} local edits applied, "
+          f"{report['pending']} chapters pending, {report['review_issue_blocks']} blocks for manual review; {stop}")
     return report
 
 
