@@ -413,6 +413,16 @@ class AutomaticWorkflowTests(unittest.TestCase):
         remote.assert_not_called()
         self.assertEqual(polish.read_state(self.state)["retry_after"], first)
 
+    def test_malformed_batch_records_per_paragraph_attempts_for_recovery(self):
+        self.add_page("overview")
+        with patch.object(polish, "copilot", side_effect=polish.InvalidPolishResponse("Invalid JSON")):
+            report = self.run_auto()
+        self.assertEqual(report["stopped_reason"], "rejected_batch")
+        self.assertEqual(report["paragraphs"][0]["reason"], "Invalid JSON")
+        state = polish.read_state(self.state)
+        self.assertEqual(next(iter(state["failures"].values()))["attempts"], 1)
+        self.assertFalse(polish.read_cache(self.cache))
+
     def test_preview_splits_long_blocks_by_input_size_and_auto_bounds_timeout(self):
         self.add_page("overview", english=ENGLISH * 20, chinese=CHINESE * 25, count=3)
         with patch.object(polish, "copilot", side_effect=self.unchanged) as remote, contextlib.redirect_stdout(io.StringIO()):

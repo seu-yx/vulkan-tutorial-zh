@@ -143,6 +143,18 @@ jobs:
           python tests/check_site.py
           python scripts/audit_terminology.py
           touch public/.nojekyll
+      - name: Save the audit and polish checkpoint
+        if: always() && steps.gate.outputs.run == 'true' && vars.POLISH_ENABLED != 'false'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: polish-progress-${{ github.run_id }}
+          path: |
+            .local/polish-auto.json
+            translations/polish.json
+            translations/polish-state.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Preserve translation progress in Git
         if: steps.gate.outputs.run == 'true'
         run: |
@@ -157,22 +169,11 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git commit -m 'chore: update translations and upstream revision [skip ci]'
-            git pull --rebase --autostash origin main
-            if [ -n "$(git ls-files --unmerged)" ]; then
-              echo '::error::Build output conflicts after restoring the working tree.'
+            if ! git push origin HEAD:main; then
+              echo '::error::Could not fast-forward main. Check the remote branch and retry from the latest revision. The polish checkpoint is available as an artifact.'
               exit 1
             fi
-            git push origin HEAD:main
           fi
-      - name: Upload the public polish progress report
-        if: always() && steps.gate.outputs.run == 'true' && vars.POLISH_ENABLED != 'false'
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: polish-progress-${{ github.run_id }}
-          path: .local/polish-auto.json
-          if-no-files-found: ignore
-          retention-days: 14
       - name: Configure Pages
         if: steps.gate.outputs.run == 'true'
         uses: actions/configure-pages@v5
