@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import shutil
 import subprocess
 import time
@@ -248,6 +249,49 @@ def _response_object(pairs):
     return result
 
 
+def _run_cli(command, prompt, *, cwd, env, timeout):
+    """Use a separate process group and reap the CLI wrapper and its native child on timeout."""
+    options = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
+    process = subprocess.Popen(command, cwd=cwd, env=env, stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               encoding="utf-8", errors="replace", **options)
+    try:
+        stdout, stderr = process.communicate(input=prompt, timeout=timeout)
+    except subprocess.TimeoutExpired as expired:
+        tree_stopped = True
+        if os.name == "nt":
+            taskkill = str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "taskkill.exe")
+            try:
+                killed = subprocess.run([taskkill, "/PID", str(process.pid), "/T", "/F"],
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=False)
+                tree_stopped = killed.returncode == 0
+            except (OSError, subprocess.TimeoutExpired):
+                tree_stopped = False
+        else:
+            try: os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+            except OSError: tree_stopped = False
+        if not tree_stopped:
+            try: process.kill()
+            except OSError: pass
+        try:
+            process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            tree_stopped = False
+            try: process.kill()
+            except OSError: pass
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None: stream.close()
+            try: process.wait(timeout=5)
+            except subprocess.TimeoutExpired: pass
+        if not tree_stopped:
+            # A ValueError is handled as a global service stop; do not start another chapter beside an orphan.
+            raise ValueError("Copilot timed out and its process tree could not be confirmed stopped") from expired
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
 def copilot(chapter, items, model, *, timeout=180):
     executable = shutil.which("copilot")
     if not executable:
@@ -272,8 +316,7 @@ def copilot(chapter, items, model, *, timeout=180):
         env = {name: os.environ[name] for name in
                ("PATH", "SystemRoot", "USERPROFILE", "TEMP", "TMP", "LANG", "LC_ALL") if name in os.environ}
         env.update(auth, COPILOT_HOME=isolated, COPILOT_CACHE_HOME=isolated)
-        result = subprocess.run(command, cwd=isolated, env=env, input=prompt,
-                                capture_output=True, encoding="utf-8", errors="replace", timeout=timeout)
+        result = _run_cli(command, prompt, cwd=isolated, env=env, timeout=timeout)
     if result.returncode:
         raise ValueError(f"Copilot CLI failed (exit {result.returncode}). Check the account's Copilot access, model, and credits.")
     answer = result.stdout.strip()

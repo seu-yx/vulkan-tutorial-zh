@@ -9,9 +9,10 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from bs4 import BeautifulSoup
 
@@ -420,17 +421,17 @@ class CopilotAdapterTests(unittest.TestCase):
                   "Chinese": CHINESE * 140, "protected": []}]
         expected = confirmed(chapter)
         result = SimpleNamespace(returncode=0, stdout="```json\n" + json.dumps(expected) + "\n```", stderr="")
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token", "UNRELATED_SECRET": "never-pass"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish.subprocess, "run", return_value=result) as process:
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token", "UNRELATED_SECRET": "never-pass"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish, "_run_cli", return_value=result) as process:
             self.assertEqual(polish.copilot(chapter, units, "test-model"), expected)
         command = process.call_args.args[0]
         options = process.call_args.kwargs
         self.assertNotIn("-p", command)
         self.assertIn("--model=test-model", command)
-        self.assertNotIn("stdin", options)
-        self.assertGreater(len(options["input"]), 32767)
+        prompt = process.call_args.args[1]
+        self.assertGreater(len(prompt), 32767)
         self.assertLess(len(" ".join(command)), 4000)
-        self.assertNotIn("@reference", options["input"])
-        payload = json.loads(options["input"].splitlines()[-1])
+        self.assertNotIn("@reference", prompt)
+        payload = json.loads(prompt.splitlines()[-1])
         self.assertEqual(payload["chapter"], chapter)
         self.assertEqual(payload["blocks"][0]["English"], units[0]["English"])
         self.assertEqual(payload["blocks"][0]["Chinese"], units[0]["Chinese"])
@@ -440,8 +441,57 @@ class CopilotAdapterTests(unittest.TestCase):
 
     def test_duplicate_json_edit_ids_are_rejected_without_guessing(self):
         result = SimpleNamespace(returncode=0, stdout='{"edits":{"1":"甲","1":"乙"}}', stderr="")
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish.subprocess, "run", return_value=result):
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish, "_run_cli", return_value=result):
             with self.assertRaises(polish.InvalidPolishResponse): polish.copilot("chapter", [], None)
+
+
+class ProcessIsolationTests(unittest.TestCase):
+    def test_stdin_roundtrip_uses_a_local_owned_process(self):
+        with tempfile.TemporaryDirectory(prefix="polish-stdin-test-") as directory:
+            prompt = "完整章节通过标准输入传输。" * 4000
+            result = polish._run_cli([sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"],
+                                     prompt, cwd=directory, env=dict(os.environ, PYTHONIOENCODING="utf-8"), timeout=10)
+        self.assertEqual((result.returncode, result.stdout), (0, prompt))
+
+    @unittest.skipIf(os.name == "nt", "Windows process-tree behavior is mocked; managed Windows denies taskkill")
+    def test_timeout_reaps_native_child_instead_of_starting_overlapping_work(self):
+        with tempfile.TemporaryDirectory(prefix="polish-process-tree-test-") as directory:
+            marker = Path(directory) / "child-survived.txt"
+            ready = Path(directory) / "child-started.txt"
+            child = f"import pathlib,time; time.sleep(1.4); pathlib.Path({str(marker)!r}).write_text('survived')"
+            parent = ("import pathlib,subprocess,sys,time; "
+                      f"subprocess.Popen([sys.executable, '-c', {child!r}]); "
+                      f"pathlib.Path({str(ready)!r}).write_text('started'); time.sleep(8)")
+            with self.assertRaises(subprocess.TimeoutExpired):
+                polish._run_cli([sys.executable, "-c", parent], "", cwd=directory,
+                                env=dict(os.environ, PYTHONIOENCODING="utf-8"), timeout=0.6)
+            self.assertTrue(ready.exists(), "The regression must actually start the native child")
+            time.sleep(1.6)
+            self.assertFalse(marker.exists(), "A timed-out wrapper must not leave its child running")
+
+    def test_posix_timeout_kills_the_separate_process_group_and_drains_pipes(self):
+        process = Mock(pid=12345)
+        process.communicate.side_effect = [subprocess.TimeoutExpired(["cli"], 0.1), ("", "")]
+        operating_system = SimpleNamespace(name="posix", killpg=Mock())
+        with patch.object(polish, "os", operating_system), patch.object(polish.signal, "SIGKILL", 9, create=True), \
+             patch.object(polish.subprocess, "Popen", return_value=process) as launch:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                polish._run_cli(["cli"], "whole chapter", cwd="isolated", env={}, timeout=0.1)
+        self.assertTrue(launch.call_args.kwargs["start_new_session"])
+        operating_system.killpg.assert_called_once_with(12345, 9)
+        self.assertEqual(process.communicate.call_count, 2)
+
+    def test_failed_windows_tree_cleanup_stops_globally_instead_of_continuing(self):
+        process = Mock(pid=12345)
+        process.communicate.side_effect = [subprocess.TimeoutExpired(["cli"], 0.1), ("", "")]
+        operating_system = SimpleNamespace(name="nt", environ={"SystemRoot": r"C:\Windows"})
+        with patch.object(polish, "os", operating_system), patch.object(polish.subprocess, "CREATE_NEW_PROCESS_GROUP", 512, create=True), \
+             patch.object(polish.subprocess, "Popen", return_value=process), \
+             patch.object(polish.subprocess, "run", return_value=SimpleNamespace(returncode=1)) as terminate:
+            with self.assertRaisesRegex(ValueError, "could not be confirmed stopped"):
+                polish._run_cli(["cli"], "whole chapter", cwd="isolated", env={}, timeout=0.1)
+        self.assertEqual(terminate.call_args.args[0][1:], ["/PID", "12345", "/T", "/F"])
+        process.kill.assert_called_once()
 
 
 if __name__ == "__main__":
