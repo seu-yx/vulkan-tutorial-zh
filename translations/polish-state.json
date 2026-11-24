@@ -17164,5 +17164,5 @@
   "deferred": 0,
   "backfill_complete": false,
   "retry_after": "2026-11-24T09:54:55+00:00",
-  "stopped_reason": "service_error"
+  "stopped_reason": "cooldown"
 }
