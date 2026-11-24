@@ -258,6 +258,27 @@ class ChapterWorkflowTests(unittest.TestCase):
             self.run_auto()
         remote.assert_not_called()
 
+    def test_batch_deadline_does_not_mark_the_last_chapter_as_a_failure(self):
+        self.add_page("first")
+        self.add_page("second")
+        clock = SimpleNamespace(monotonic=Mock(side_effect=[0, 1, 2, 380, 390]))
+
+        def answer(chapter, items, model, *, timeout):
+            if chapter["id"] == "second":
+                self.assertEqual(timeout, 30)
+                raise subprocess.TimeoutExpired(["copilot"], timeout)
+            return self.unchanged(chapter, items, model)
+
+        with patch.object(polish, "time", clock), patch.object(polish, "copilot", side_effect=answer):
+            report = self.run_auto()
+        state = polish.read_state(self.state)
+        self.assertEqual((state["processed"], state["pending"], state["failures"]), (1, 1, {}))
+        self.assertEqual((report["attempted"], report["stopped_reason"]), (2, "time_budget"))
+        with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
+            self.run_auto()
+        remote.assert_called_once()
+        self.assertEqual(remote.call_args.args[0]["id"], "second")
+
     def test_new_or_modified_chapters_keep_absolute_priority(self):
         self.add_page("old")
         self.add_page("modified")

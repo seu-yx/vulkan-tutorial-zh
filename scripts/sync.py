@@ -427,6 +427,31 @@ def translate_validated_batch(translator, batch):
     return restored
 
 
+def checkout_upstream_revision(source, revision):
+    """Prepare an exact upstream revision without discarding local changes."""
+    git = ["git", "-C", str(source)]
+    if not source.exists() or (source.is_dir() and not any(source.iterdir())):
+        subprocess.run(["git", "init", "--quiet", str(source)], check=True)
+        subprocess.run([*git, "remote", "add", "origin", UPSTREAM_URL], check=True)
+    root = subprocess.check_output([*git, "rev-parse", "--show-toplevel"], text=True).strip()
+    if Path(root).resolve() != source.resolve():
+        raise ValueError(f"Upstream path must be the root of a Git worktree: {source}")
+    changes = subprocess.check_output([*git, "status", "--porcelain", "--untracked-files=all", "--ignored"], text=True)
+    if changes:
+        raise ValueError(f"Pinned upstream requires a clean worktree: {source}")
+    head = subprocess.run([*git, "rev-parse", "--verify", "--quiet", "HEAD"], capture_output=True, text=True)
+    if head.stdout.strip() == revision:
+        return revision
+    available = subprocess.run([*git, "cat-file", "-t", revision], capture_output=True, text=True)
+    if available.stdout.strip() != "commit":
+        subprocess.run([*git, "fetch", "--depth", "1", "--no-tags", UPSTREAM_URL, revision], check=True)
+    subprocess.run([*git, "checkout", "--quiet", "--detach", revision], check=True)
+    head = subprocess.check_output([*git, "rev-parse", "--verify", "HEAD"], text=True).strip()
+    if head != revision:
+        raise ValueError(f"Expected upstream revision {revision}, got {head}")
+    return head
+
+
 def sync(args):
     source = Path(args.upstream).resolve()
     output = Path(args.output).resolve()
@@ -434,13 +459,16 @@ def sync(args):
     cache_input = cache_path(args.import_cache, ROOT) if args.import_cache else None
     cache_output = cache_path(args.export_cache, ROOT) if args.export_cache else None
     state.mkdir(exist_ok=True)
-    if not source.exists():
-        subprocess.run(["git", "clone", "--depth", "1", UPSTREAM_URL, str(source)], check=True)
-    elif not args.no_fetch:
-        # Do not execute upstream build scripts or modify a locally edited checkout.
-        subprocess.run(["git", "-C", str(source), "fetch", "origin", "main"], check=True)
-        subprocess.run(["git", "-C", str(source), "merge", "--ff-only", "FETCH_HEAD"], check=True)
-    commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+    if args.upstream_revision:
+        commit = checkout_upstream_revision(source, args.upstream_revision)
+    else:
+        if not source.exists():
+            subprocess.run(["git", "clone", "--depth", "1", UPSTREAM_URL, str(source)], check=True)
+        elif not args.no_fetch:
+            # Do not execute upstream build scripts or modify a locally edited checkout.
+            subprocess.run(["git", "-C", str(source), "fetch", "origin", "main"], check=True)
+            subprocess.run(["git", "-C", str(source), "merge", "--ff-only", "FETCH_HEAD"], check=True)
+        commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
     rendered_path = state / "rendered.json"
     subprocess.run(["node", str(ROOT / "scripts/build.mjs"), "--upstream", str(source), "--output", str(rendered_path)], check=True)
     rendered = json.loads(rendered_path.read_text(encoding="utf-8"))
@@ -674,7 +702,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--upstream", default=str(ROOT / ".local/upstream"))
     parser.add_argument("--output", default=str(ROOT / "public"))
-    parser.add_argument("--no-fetch", action="store_true", help="Use the current upstream checkout without fetching")
+    upstream_mode = parser.add_mutually_exclusive_group()
+    upstream_mode.add_argument("--no-fetch", action="store_true", help="Use the current upstream checkout without fetching")
+    upstream_mode.add_argument("--upstream-revision", metavar="SHA", help="Build the exact full lowercase upstream commit SHA")
     parser.add_argument("--skip-translate", action="store_true", help="Render the complete mirror using cached translations only")
     parser.add_argument("--translate-limit", type=int, default=0, help="Maximum new translation requests; 0 means all")
     parser.add_argument("--translation-seconds", type=int, default=0, help="Stop adding translation requests after this budget; 0 means unlimited")
@@ -684,6 +714,8 @@ def main():
     parser.add_argument("--import-cache", metavar="PATH", help="Import a reviewed Google v5 .jsonl cache inside the project")
     parser.add_argument("--export-cache", metavar="PATH", help="Export current Google v5 translations to a stable project .jsonl file at every checkpoint")
     args = parser.parse_args()
+    if args.upstream_revision is not None and not re.fullmatch(r"[0-9a-f]{40}", args.upstream_revision):
+        parser.error("--upstream-revision must be a full lowercase 40-digit commit SHA")
     if not 1 <= args.workers <= 4: parser.error("--workers must be 1..4")
     if args.translate_limit < 0 or args.translation_seconds < 0: parser.error("Limits must be nonnegative")
     sync(args)

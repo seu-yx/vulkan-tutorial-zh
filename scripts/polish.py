@@ -28,6 +28,7 @@ PROTECTED = re.compile(
 )
 CHINESE = re.compile(r"[\u3400-\u9fff]")
 MAX_CHAPTER_INPUT_BYTES = 200_000
+CHAPTER_TIMEOUT_SECONDS = 180
 MAX_BLOCK_LENGTH = MAX_CHAPTER_INPUT_BYTES
 MIN_PROSE_HAN = 2
 STATE_VERSION = 2
@@ -292,7 +293,7 @@ def _run_cli(command, prompt, *, cwd, env, timeout):
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
-def copilot(chapter, items, model, *, timeout=180):
+def copilot(chapter, items, model, *, timeout=CHAPTER_TIMEOUT_SECONDS):
     executable = shutil.which("copilot")
     if not executable:
         raise ValueError("GitHub Copilot CLI is not installed")
@@ -611,12 +612,16 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                     stop = "time_budget"
                     break
                 chapter = load_chapter(data, item["page"], updated)
+                remaining_seconds = seconds - (time.monotonic() - started)
+                if remaining_seconds <= 0:
+                    stop = "time_budget"
+                    break
+                timeout = min(CHAPTER_TIMEOUT_SECONDS, remaining_seconds)
                 attempted += 1
                 chapter_result = {"page": chapter.page_id, "key": chapter.key, "title": chapter.title,
                                   "input_bytes": chapter.input_bytes, "editable_count": len(chapter.editable)}
                 try:
-                    remaining_seconds = max(0.1, min(180, seconds - (time.monotonic() - started)))
-                    answer = copilot(chapter.metadata, chapter.units, model, timeout=remaining_seconds)
+                    answer = copilot(chapter.metadata, chapter.units, model, timeout=timeout)
                     updated, chapter_audit, complete = review_chapter(chapter, answer, updated)
                     review.extend(dict(result, page=chapter.page_id) for result in chapter_audit)
                     chapter_result.update(status="complete" if complete else "partial",
@@ -628,10 +633,15 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                     complete = False
                     chapter_result.update(status="rejected_response", reason=str(error))
                 except subprocess.TimeoutExpired:
+                    if timeout < CHAPTER_TIMEOUT_SECONDS:
+                        stop = "time_budget"
+                        chapter_result.update(status="time_budget", reason="Batch ended before the chapter timeout")
+                        chapter_reviews.append(chapter_result)
+                        break
                     complete = False
                     chapter_result.update(status="timeout", reason="Complete-chapter request timed out")
                 except (OSError, ValueError) as error:
-                    stop, global_retry = "service_error", now + timedelta(hours=6)
+                    stop, global_retry = "service_error", datetime.now(timezone.utc) + timedelta(hours=6)
                     chapter_result.update(status="service_error", reason=type(error).__name__)
                     chapter_reviews.append(chapter_result)
                     break
@@ -645,13 +655,17 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                     failures[chapter.key] = {"attempts": attempts, "quarantined": quarantined,
                                             "retry_after": None if quarantined else (now + timedelta(hours=2 ** (attempts - 1))).isoformat(timespec="seconds")}
                 chapter_reviews.append(chapter_result)
+                print(f"Copilot chapter {chapter.page_id!r}: {chapter_result['status']}; {len(completed)}/{len(keys)} complete", flush=True)
                 checkpoint()
                 if stop:
                     break
         except KeyboardInterrupt:
             stop = "interrupted"
         if stop is None:
-            stop = "complete" if not pending_keys() else "limit"
+            if pending_keys():
+                stop = "limit"
+            else:
+                stop = "complete" if len(completed) == len(keys) else "deferred_or_quarantined"
     changed, applied = apply_cache(data, page_ids, updated, strict=False)
     report = checkpoint()
     report.update(applied=applied, changed_pages=changed)
@@ -679,10 +693,12 @@ def main():
     if args.page and args.limit is not None:
         parser.error("--page always reviews one complete chapter; --limit is for --auto only")
     args.limit = args.limit if args.limit is not None else 5
-    if not 1 <= args.limit <= 10:
-        parser.error("--limit must be 1 through 10 complete chapters")
-    if not 1 <= args.seconds <= 900:
-        parser.error("--seconds must be 1 through 900")
+    max_chapters = 50 if args.auto and args.backfill else 10
+    max_seconds = 2400 if args.auto and args.backfill else 900
+    if not 1 <= args.limit <= max_chapters:
+        parser.error(f"--limit must be 1 through {max_chapters} complete chapters")
+    if not 1 <= args.seconds <= max_seconds:
+        parser.error(f"--seconds must be 1 through {max_seconds}")
     if args.backfill and not args.auto:
         parser.error("--backfill requires --auto")
     if args.model and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._-]*", args.model):

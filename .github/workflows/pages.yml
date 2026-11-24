@@ -18,6 +18,8 @@ on:
   schedule:
     # UTC 20:23 = 04:23 the following day in Asia/Shanghai.
     - cron: '23 20 * * *'
+  repository_dispatch:
+    types: [vulkan-polish-backfill]
   workflow_dispatch:
     inputs:
       force_build:
@@ -38,22 +40,24 @@ permissions:
 
 concurrency:
   group: vulkan-pages-and-sync
-  cancel-in-progress: false
+  queue: max
 
 jobs:
   build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: ${{ github.event_name == 'repository_dispatch' && 50 || 25 }}
     permissions:
       contents: write
       pages: read
       copilot-requests: write
     outputs:
       publish: ${{ steps.gate.outputs.run }}
+      continue_backfill: ${{ steps.continuation.outputs.continue }}
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: main
           fetch-depth: 1
       - name: Check the upstream Git commit
         id: gate
@@ -61,7 +65,9 @@ jobs:
           FORCE_BUILD: ${{ inputs.force_build || false }}
           POLISH_ENABLED: ${{ vars.POLISH_ENABLED != 'false' }}
         run: |
-          if [ "$FORCE_BUILD" = "true" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            python scripts/ci_gate.py --backfill
+          elif [ "$FORCE_BUILD" = "true" ]; then
             python scripts/ci_gate.py --force
           else
             python scripts/ci_gate.py
@@ -101,7 +107,7 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Sync Git changes and translate a bounded batch
-        if: steps.gate.outputs.run == 'true'
+        if: steps.gate.outputs.run == 'true' && github.event_name != 'repository_dispatch'
         env:
           TRANSLATE_LIMIT: ${{ inputs.translate_limit || 500 }}
           PYTHONUNBUFFERED: '1'
@@ -113,24 +119,46 @@ jobs:
           python scripts/sync.py --provider google --workers 1 --delay 2 \
             --translate-limit "$TRANSLATE_LIMIT" --translation-seconds 600 \
             --import-cache translations/google.jsonl --export-cache translations/google.jsonl
+      - name: Rebuild the current translation snapshot for backlog review
+        if: steps.gate.outputs.run == 'true' && github.event_name == 'repository_dispatch'
+        env:
+          PINNED_SHA: ${{ steps.gate.outputs.upstream_sha }}
+          PYTHONUNBUFFERED: '1'
+        run: |
+          mkdir -p .local
+          cp translations/polish-state.json .local/polish-before.json
+          python scripts/sync.py --upstream-revision "$PINNED_SHA" --skip-translate \
+            --import-cache translations/google.jsonl
       - name: Check changed chapters and resume a sequential polish backfill
         id: polish
         if: steps.gate.outputs.run == 'true' && vars.POLISH_ENABLED != 'false'
-        timeout-minutes: 9
+        timeout-minutes: ${{ github.event_name == 'repository_dispatch' && 43 || 9 }}
         continue-on-error: true
         env:
           # Only this inference step receives the short-lived Copilot token.
           GITHUB_TOKEN: ${{ github.token }}
           POLISH_LIMIT: ${{ inputs.polish_limit }}
+          INITIAL_BACKFILL: ${{ github.event.client_payload.initial == true }}
           COPILOT_AUTO_UPDATE: 'false'
           PYTHONUNBUFFERED: '1'
         run: |
-          POLISH_LIMIT="${POLISH_LIMIT:-5}"
-          if ! [[ "$POLISH_LIMIT" =~ ^([1-9]|10)$ ]]; then
-            echo '::error::polish_limit must be an integer from 1 to 10 chapters'
-            exit 1
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            if [ "$INITIAL_BACKFILL" = "true" ]; then
+              POLISH_LIMIT=8
+              POLISH_SECONDS=480
+            else
+              POLISH_LIMIT=50
+              POLISH_SECONDS=2400
+            fi
+          else
+            POLISH_LIMIT="${POLISH_LIMIT:-5}"
+            if ! [[ "$POLISH_LIMIT" =~ ^([1-9]|10)$ ]]; then
+              echo '::error::polish_limit must be an integer from 1 to 10 chapters'
+              exit 1
+            fi
+            POLISH_SECONDS=420
           fi
-          python scripts/polish.py --auto --backfill --limit "$POLISH_LIMIT" --seconds 420 \
+          python scripts/polish.py --auto --backfill --limit "$POLISH_LIMIT" --seconds "$POLISH_SECONDS" \
             --state translations/polish-state.json --report .local/polish-auto.json --model auto
       - name: Apply the valid polish cache without a model call
         if: steps.gate.outputs.run == 'true' && steps.polish.outcome != 'success'
@@ -139,7 +167,9 @@ jobs:
       - name: Validate the generated website
         if: steps.gate.outputs.run == 'true'
         run: |
-          python scripts/ci_gate.py --record
+          if [ "$GITHUB_EVENT_NAME" != "repository_dispatch" ]; then
+            python scripts/ci_gate.py --record
+          fi
           python tests/check_site.py
           python scripts/audit_terminology.py
           touch public/.nojekyll
@@ -159,7 +189,9 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: |
           git status --short
-          git add -- translations/google.jsonl translations/upstream.json
+          if [ "$GITHUB_EVENT_NAME" != "repository_dispatch" ]; then
+            git add -- translations/google.jsonl translations/upstream.json
+          fi
           for cache in translations/polish.json translations/polish-state.json; do
             if [ -f "$cache" ]; then
               git add -- "$cache"
@@ -174,6 +206,10 @@ jobs:
               exit 1
             fi
           fi
+      - name: Check whether the backlog should continue
+        id: continuation
+        if: github.event_name == 'repository_dispatch' && steps.polish.outcome == 'success'
+        run: python scripts/ci_gate.py --continue-backfill .local/polish-before.json
       - name: Configure Pages
         if: steps.gate.outputs.run == 'true'
         uses: actions/configure-pages@v5
@@ -198,3 +234,22 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  resume_backfill:
+    needs: [build, deploy]
+    if: needs.build.outputs.continue_backfill == 'true' && needs.deploy.result == 'success' && vars.POLISH_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - name: Queue the next backlog batch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --silent --show-error --fail --max-time 30 --request POST \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'Content-Type: application/json' \
+            --data '{"event_type":"vulkan-polish-backfill"}' \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/dispatches"

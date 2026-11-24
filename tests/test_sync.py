@@ -1,14 +1,73 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from bs4 import BeautifulSoup
 
 spec = importlib.util.spec_from_file_location("mirror_sync", Path(__file__).parents[1] / "scripts/sync.py")
 sync = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sync)
+
+
+class UpstreamRevisionTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.directory = Path(temporary.name)
+        self.origin = self.directory / "origin"
+        subprocess.run(["git", "init", "--quiet", "--initial-branch=main", str(self.origin)], check=True)
+        self.first = self.commit("first")
+        self.latest = self.commit("latest")
+
+    def git(self, source, *args):
+        return subprocess.check_output(["git", "-C", str(source), *args], stderr=subprocess.PIPE, text=True).strip()
+
+    def commit(self, contents):
+        (self.origin / "tutorial.adoc").write_text(contents, encoding="utf-8")
+        self.git(self.origin, "add", "tutorial.adoc")
+        self.git(self.origin, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", contents)
+        return self.git(self.origin, "rev-parse", "HEAD")
+
+    def test_new_checkout_fetches_only_the_pin_then_supports_normal_fast_forward(self):
+        checkout = self.directory / "upstream"
+        with patch.object(sync, "UPSTREAM_URL", self.origin.as_uri()):
+            self.assertEqual(sync.checkout_upstream_revision(checkout, self.first), self.first)
+        self.assertEqual(self.git(checkout, "remote", "get-url", "origin"), self.origin.as_uri())
+        self.assertEqual(self.git(checkout, "rev-parse", "--abbrev-ref", "HEAD"), "HEAD")
+        self.assertEqual(self.git(checkout, "rev-parse", "--is-shallow-repository"), "true")
+        self.assertEqual((checkout / "tutorial.adoc").read_text(encoding="utf-8"), "first")
+        self.git(checkout, "fetch", "origin", "main")
+        self.git(checkout, "merge", "--ff-only", "FETCH_HEAD")
+        self.assertEqual(self.git(checkout, "rev-parse", "HEAD"), self.latest)
+
+    def test_matching_pin_reuses_the_checkout_without_a_remote(self):
+        with patch.object(sync, "UPSTREAM_URL", (self.directory / "missing").as_uri()):
+            self.assertEqual(sync.checkout_upstream_revision(self.origin, self.latest), self.latest)
+
+    def test_unavailable_pin_never_falls_back_to_main(self):
+        checkout = self.directory / "upstream"
+        with patch.object(sync, "UPSTREAM_URL", self.origin.as_uri()):
+            with self.assertRaises(subprocess.CalledProcessError):
+                sync.checkout_upstream_revision(checkout, "0" * 40)
+        self.assertFalse((checkout / "tutorial.adoc").exists())
+
+    def test_tracked_and_untracked_changes_are_preserved(self):
+        source = self.origin / "tutorial.adoc"
+        source.write_text("local edit", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "requires a clean worktree"):
+            sync.checkout_upstream_revision(self.origin, self.first)
+        self.assertEqual(source.read_text(encoding="utf-8"), "local edit")
+        source.write_text("latest", encoding="utf-8")
+        local = self.origin / "extra.adoc"
+        local.write_text("untracked content", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "requires a clean worktree"):
+            sync.checkout_upstream_revision(self.origin, self.latest)
+        self.assertEqual(local.read_text(encoding="utf-8"), "untracked content")
+        self.assertEqual(self.git(self.origin, "rev-parse", "HEAD"), self.latest)
 
 
 class MirrorTests(unittest.TestCase):
