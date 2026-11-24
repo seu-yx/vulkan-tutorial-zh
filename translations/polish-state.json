@@ -904,6 +904,7 @@
     "08823f8663b2355b8871eae296ebb4423af10315d06e3acc3bea4a6e7b0f2f9d",
     "09444842c12d42126cff4bed3bb0bac045b08bd6f7754c425766d0d69c535c86",
     "09bdff92c0c0ded9818f4c3d93d8fe08202da99b92ed6942c744606cb8cda9fc",
+    "0a08f7d4d277e7e382bc00622a9b4070842d2a7cb3efa8ff1e8161aa115bdec3",
     "0b4c81eae930c244bb0462680678eafaba42154afda6f99ce7e94c6cb613c3d8",
     "0c13d98994e6681028694793edae3e0d390785eeb97d2e0cc66e6b72d7041758",
     "0decfab18b5a2a8e43935ad431027fe9cfa426172821f3682d7ef13fbbc58721",
@@ -965,6 +966,7 @@
     "41261f76c4287dc30ed0a147e803fe20028fa9507cb5b98e1511e7346e314db5",
     "41785b369862592c9a456021def75bbe58b37214ed6a0a9d9f36ac49496dc87b",
     "422f6863a64ac3f7cb06e4f817394505077ce7698955b8aadcb819c4517a4951",
+    "427e2dbe270a1780b5055cdd81037fc73a722dff1fb80d85f7ec9cf6a65a4633",
     "42edf67b2422bb11680cd30dcf9b218a4ddbe6970a13b5f5c71d39f96a1d2c14",
     "440032812f9d032a49f98d78723f97d8e66df8de723ec189608b865631c73eac",
     "44215cf3bebc1bbd96fcb7714b9e77be58761f38586f1cdc677464c42bda6536",
@@ -1110,6 +1112,7 @@
     "c00e93e04e1f49960561c1018fc2d203e76fe6a326a829db632d748fcf5f936e",
     "c0417cc41e6f592d4a67748b5e4c3d3104259acbafd1c99cab45237116b43112",
     "c09a6b640c9d196bcff4329d40d07c9759703df39cade584298018ec2b715a00",
+    "c1577689123c4865bc4b856af9a19c6deefdc6d206aa6d11c8209bec59878102",
     "c1c7fe9f1507e406a9ce3a992e34951a3ddd9f0eb28c39e7620844d436618220",
     "c2e9a94afb2b9640ed2fe03c0b888ad4ea08dbe390a2a451a8f92c9aa58c52d3",
     "c3273f7158bee4857d6a594de5ce23f0502dc9e4bd67e43b6d7ef50ff4605dda",
@@ -1122,6 +1125,7 @@
     "c92306ac2f8bff249ee5b4a8f7777c004b26820cb371b946aa4590addf3e1524",
     "c96b0a129d986ebed586c204c0269c5ceb23f2561443cc797bf49de7c0911556",
     "c99f6b3999e44750038917975bf1ae76dd95cbd7575bdec887cc40d1864a484d",
+    "ca7337179310c3c73f108ef39c89cc90ef839fe8040564e14441223f88e3abcf",
     "cb342ff7ad9939d42bd2e0ef80ba507172214765609e9fb20d2bef5d86bbef6e",
     "cb867e68025575c3b8d8ef2e5d3e672e8a652d6fd40deabe8f684b0a9d6ea01e",
     "cc51879ff42a314da33804e845992e49d253d74ed4fca97f327a4243a8801eee",
@@ -1200,11 +1204,6 @@
       "quarantined": false,
       "retry_after": "2026-11-24T09:10:20+00:00"
     },
-    "0a08f7d4d277e7e382bc00622a9b4070842d2a7cb3efa8ff1e8161aa115bdec3": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T07:42:29+00:00"
-    },
     "2c842eb86c2fa0fb3f7edbd82988417b79ef4a3a8b70e6e76794ba2bbb89885d": {
       "attempts": 1,
       "quarantined": false,
@@ -1215,30 +1214,15 @@
       "quarantined": false,
       "retry_after": "2026-11-24T08:42:29+00:00"
     },
-    "427e2dbe270a1780b5055cdd81037fc73a722dff1fb80d85f7ec9cf6a65a4633": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T07:42:29+00:00"
-    },
     "5897868c5e118c2272c118516a6e11d254304b698b60ba7d10c8f5f44bc62f3c": {
       "attempts": 1,
       "quarantined": false,
       "retry_after": "2026-11-24T08:35:41+00:00"
     },
     "b80bd2d5183097b7364300917b2194b619388c8a5b6610cb9203bed3885fcc05": {
-      "attempts": 1,
+      "attempts": 2,
       "quarantined": false,
-      "retry_after": "2026-11-24T07:42:29+00:00"
-    },
-    "c1577689123c4865bc4b856af9a19c6deefdc6d206aa6d11c8209bec59878102": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T08:10:20+00:00"
-    },
-    "ca7337179310c3c73f108ef39c89cc90ef839fe8040564e14441223f88e3abcf": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T08:10:20+00:00"
+      "retry_after": "2026-11-24T10:14:32+00:00"
     },
     "cff2d3e0479ca9139df1cf3e1de23a2254e0f669db7eaf70a5a0db0fe99a2618": {
       "attempts": 1,
@@ -1262,10 +1246,10 @@
     }
   },
   "eligible": 445,
-  "processed": 297,
-  "pending": 148,
+  "processed": 301,
+  "pending": 144,
   "priority_pending": 0,
-  "backfill_pending": 148,
+  "backfill_pending": 144,
   "rejected": 0,
   "deferred": 0,
   "backfill_complete": false,
