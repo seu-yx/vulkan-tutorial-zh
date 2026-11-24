@@ -46,10 +46,45 @@ def needs_build(previous, remote_sha, event, force=False, *, polish=None,
     return False, 'upstream Git commit unchanged; no translations or polish ready to resume'
 
 
+def backfill_revision(previous, polish, *, enabled=True, now=None):
+    """Use the last published source commit for a ready translation backlog."""
+    revision = previous.get('commit')
+    if (enabled and polish_ready(polish, now)
+            and isinstance(revision, str) and re.fullmatch(r'[0-9a-f]{40}', revision)):
+        return revision
+    return None
+
+
+def can_continue_backfill(before, after, *, now=None):
+    if not polish_ready(after, now) or after.get('stopped_reason') not in {'limit', 'time_budget'}:
+        return False
+    if not isinstance(before, dict) or before.get('version') != 2:
+        return False
+    old = before.get('completed')
+    new = after.get('completed')
+    if not all(isinstance(keys, list) and all(isinstance(key, str) for key in keys) for keys in (old, new)):
+        return False
+    return set(old) < set(new)
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
+
+
+def write_outputs(**outputs):
+    if os.environ.get('GITHUB_OUTPUT'):
+        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as destination:
+            for key, value in outputs.items():
+                destination.write(f'{key}={value}\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--record', action='store_true', help='Record the successfully built upstream commit')
-    parser.add_argument('--force', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--record', action='store_true', help='Record the successfully built upstream commit')
+    mode.add_argument('--force', action='store_true')
+    mode.add_argument('--backfill', action='store_true', help='Read the ready polish queue and pinned upstream commit')
+    mode.add_argument('--continue-backfill', type=Path, help='Compare against the pre-build polish inventory')
     args = parser.parse_args()
     state_file = ROOT / 'translations/upstream.json'
     if args.record:
@@ -62,26 +97,38 @@ def main():
             state_file.write_text(content, encoding='utf-8')
         print(f"Recorded upstream {state['commit'][:12]}; {state['pending']} pending paragraphs")
         return
-    previous = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {}
+    try:
+        polish = read_json(ROOT / 'translations/polish-state.json')
+    except (OSError, ValueError):
+        print('Polish state could not be read; waiting for the next source build to refresh it')
+        polish = None
+    if args.continue_backfill:
+        resume = can_continue_backfill(read_json(args.continue_backfill), polish)
+        write_outputs(**{'continue': 'true' if resume else 'false'})
+        if isinstance(polish, dict):
+            print(f"Backfill progress: {polish.get('processed')} / {polish.get('eligible')} complete; "
+                  f"{polish.get('pending')} pending, {polish.get('rejected')} quarantined, "
+                  f"{polish.get('deferred')} deferred; {polish.get('stopped_reason')}")
+        return
+    previous = read_json(state_file) or {}
+    enabled = os.environ.get('POLISH_ENABLED', 'true').lower() != 'false'
+    if args.backfill:
+        revision = backfill_revision(previous, polish, enabled=enabled)
+        write_outputs(run='true' if revision else 'false', upstream_sha=revision or '')
+        if revision:
+            print(f"Backfill ready: {polish['pending']} chapters; pinned upstream {revision[:12]}")
+        else:
+            print('Backfill skipped; no enabled, ready backlog with a valid pinned upstream')
+        return
     result = subprocess.run(['git', 'ls-remote', '--exit-code', UPSTREAM, 'refs/heads/main'],
                             check=True, capture_output=True, text=True, timeout=90)
     remote_sha = result.stdout.split()[0]
     if not re.fullmatch(r'[0-9a-f]{40}', remote_sha):
         raise ValueError('Git returned an invalid upstream commit SHA')
-    polish_file = ROOT / 'translations/polish-state.json'
-    polish = None
-    if polish_file.exists():
-        try:
-            polish = json.loads(polish_file.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            print('Polish state could not be read; waiting for the next source build to refresh it')
     run, reason = needs_build(
         previous, remote_sha, os.environ.get('GITHUB_EVENT_NAME', 'workflow_dispatch'), args.force,
-        polish=polish, polish_enabled=os.environ.get('POLISH_ENABLED', 'true').lower() != 'false')
-    output = f"run={'true' if run else 'false'}\nupstream_sha={remote_sha}\n"
-    if os.environ.get('GITHUB_OUTPUT'):
-        with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as destination:
-            destination.write(output)
+        polish=polish, polish_enabled=enabled)
+    write_outputs(run='true' if run else 'false', upstream_sha=remote_sha)
     print(f"{reason}; upstream {remote_sha[:12]}")
 
 

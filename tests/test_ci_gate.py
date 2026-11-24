@@ -78,6 +78,33 @@ class GitGateTests(unittest.TestCase):
             with self.subTest(polish=polish):
                 self.assertFalse(gate.polish_ready(polish, self.now))
 
+    def test_accelerated_build_pins_the_published_revision(self):
+        revision = 'a' * 40
+        state = {'commit': revision, 'pending': 14}
+        ready = {'version': 2, 'pending': 435}
+        self.assertEqual(gate.backfill_revision(state, ready, now=self.now), revision)
+        self.assertIsNone(gate.backfill_revision(state, ready, enabled=False, now=self.now))
+        self.assertIsNone(gate.backfill_revision({'commit': 'main'}, ready, now=self.now))
+        self.assertIsNone(gate.backfill_revision(state, {'version': 2, 'pending': 0}, now=self.now))
+        paused = dict(ready, retry_after='2026-11-24T12:00:01Z')
+        self.assertIsNone(gate.backfill_revision(state, paused, now=self.now))
+
+    def test_accelerated_continuation_requires_new_verified_chapters_and_ready_work(self):
+        before = {'version': 2, 'completed': ['a']}
+        after = {'version': 2, 'completed': ['a', 'b'], 'pending': 5, 'stopped_reason': 'limit'}
+        self.assertTrue(gate.can_continue_backfill(before, after, now=self.now))
+        self.assertTrue(gate.can_continue_backfill(before, dict(after, stopped_reason='time_budget'), now=self.now))
+        for blocked in (
+            dict(after, completed=['a']),
+            dict(after, completed=['b', 'c']),
+            dict(after, completed='ab'),
+            dict(after, pending=0),
+            dict(after, stopped_reason='service_error'),
+            dict(after, retry_after='2026-11-24T12:00:01Z'),
+        ):
+            with self.subTest(after=blocked):
+                self.assertFalse(gate.can_continue_backfill(before, blocked, now=self.now))
+
 
 if __name__ == '__main__':
     unittest.main()
