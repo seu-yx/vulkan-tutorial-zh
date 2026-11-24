@@ -29,9 +29,9 @@ on:
         type: number
         default: 500
       polish_limit:
-        description: Maximum paragraphs to check with Copilot (1-120; uses AI credits)
+        description: Maximum whole chapters to check sequentially (1-10; uses AI credits)
         type: number
-        default: 30
+        default: 5
 
 permissions:
   contents: read
@@ -113,10 +113,10 @@ jobs:
           python scripts/sync.py --provider google --workers 1 --delay 2 \
             --translate-limit "$TRANSLATE_LIMIT" --translation-seconds 600 \
             --import-cache translations/google.jsonl --export-cache translations/google.jsonl
-      - name: Check changed translations and resume a bounded polish backfill
+      - name: Check changed chapters and resume a sequential polish backfill
         id: polish
         if: steps.gate.outputs.run == 'true' && vars.POLISH_ENABLED != 'false'
-        timeout-minutes: 5
+        timeout-minutes: 9
         continue-on-error: true
         env:
           # Only this inference step receives the short-lived Copilot token.
@@ -125,12 +125,12 @@ jobs:
           COPILOT_AUTO_UPDATE: 'false'
           PYTHONUNBUFFERED: '1'
         run: |
-          POLISH_LIMIT="${POLISH_LIMIT:-30}"
-          if ! [[ "$POLISH_LIMIT" =~ ^([1-9]|[1-9][0-9]|1[01][0-9]|120)$ ]]; then
-            echo '::error::polish_limit must be an integer from 1 to 120'
+          POLISH_LIMIT="${POLISH_LIMIT:-5}"
+          if ! [[ "$POLISH_LIMIT" =~ ^([1-9]|10)$ ]]; then
+            echo '::error::polish_limit must be an integer from 1 to 10 chapters'
             exit 1
           fi
-          python scripts/polish.py --auto --backfill --limit "$POLISH_LIMIT" --seconds 180 \
+          python scripts/polish.py --auto --backfill --limit "$POLISH_LIMIT" --seconds 420 \
             --state translations/polish-state.json --report .local/polish-auto.json --model auto
       - name: Apply the valid polish cache without a model call
         if: steps.gate.outputs.run == 'true' && steps.polish.outcome != 'success'

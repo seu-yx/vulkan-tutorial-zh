@@ -71,15 +71,15 @@ Google 续译默认单并发，文本块上限 500，时间预算约 10 分钟�
 
 ## Copilot 校订与进度恢复
 
-Google 构建完成后，自动校订优先处理新增或变更的译文，空余批次继续处理旧章节。默认每轮最多 30 个文本块，手动运行可设 `polish_limit` 为 1–120，仍受时间预算约束。仓库 Actions 变量 `POLISH_ENABLED=false` 可暂停新请求。
+Google 构建完成后，自动校订优先处理新增或变更的章节，其余时间继续处理存量。每次请求只校订一整篇，几篇之间串行处理。每轮最多 5 篇，手动运行可设 `polish_limit` 为 1–10 篇，仍受时间预算约束。仓库 Actions 变量 `POLISH_ENABLED=false` 可暂停新请求。
 
-Copilot 对照英文和基础译文，只修明显不通顺或不准确的局部。校验保护术语、代码、链接、数字和关键条件。超出改动范围或校验失败时，保留 Google 译文。额度、权限或服务错误会暂停推理，已有有效校订仍可随站点发布。使用 GitHub 提供的 `GITHUB_TOKEN` 和 `copilot-requests: write`。个人仓库按所有者的 Copilot 额度计量，超额用量由账户预算控制。[GitHub 预算说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
+Copilot 按章节顺序对照英文和当前译文，只修明显不通顺或不准确的局部。返回的改动仍按文本块校验，保护术语、代码、链接、数字和关键条件。校验失败的改动保留原译。额度、权限或服务错误会暂停推理，已有有效校订仍可随站点发布。使用 GitHub 提供的 `GITHUB_TOKEN` 和 `copilot-requests: write`。个人仓库按所有者的 Copilot 额度计量，超额用量由账户预算控制。[GitHub 预算说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
 
 - `translations/polish.json` 保存有效校订和已确认无需改动的结果。原文、基础译文或受保护内容变化时，对应旧记录自动失效。
-- `translations/polish-state.json` 保存待处理队列、失败和冷却状态。同步中断时，从已有记录继续。
+- `translations/polish-state.json` 按章节内容记录完成进度、失败和冷却状态。英文或基础译文变化的章节重新排队。旧版按段的校订仍有效，但整篇校订以新的章节记录为准。
 - **polish-progress-<运行编号>** 产物包含对照报告和校订缓存。Git 写回失败时，可按记录键核对并恢复有效条目。
 
-人工抽查时，运行 [Polish translations preview](.github/workflows/polish.yml)，选择 `main`，填写章节 ID（例如 `01_Overview`，也可从 URL 的 `page=` 参数取得）。默认检查 12 段，最多 30 段，模型留空使用 Copilot Auto。该预览会消耗 Copilot 额度。下载 **polish-preview-<运行编号>**，参照 `review.json` 比对英文、基础译文和校订稿，按条目 ID 将采纳的结果合并到最新的 `translations/polish.json`。
+人工抽查时，运行整章预览工作流，选择 `main`，填写章节 ID（例如 `01_Overview`，也可从 URL 的 `page=` 参数取得）。模型留空使用 Copilot Auto。该预览会消耗 Copilot 额度。下载 **polish-preview-<运行编号>**，参照 `review.json` 比对英文、译文和校订稿，根据 `cache_key` 将采纳的结果合并到最新的 `translations/polish.json`。[Polish translations preview](.github/workflows/polish.yml)
 
 ## 扩展术语
 
