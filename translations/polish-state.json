@@ -1062,6 +1062,7 @@
     "61b4550f54ea5c85c941f5c2988164fe5e8502e7bd9a4398a2889b113a8cd065",
     "64486cae4ff450c286395043c23ef3beb09815641d4ead4f8f0513a1c78e753b",
     "64e402be7c9bfd46c9d8bb0ade922c561bc827e36ba8c62aa3e7103712643f79",
+    "666d7c23e4fcf0f3a216d139fd66d7c6ca06e75c4ced3b89e6402bffc0285d92",
     "66785434cc4754fab429fb5580345e3700343f6a3435de7defca095b54902efb",
     "66a557ecdd9e068ec6407c8937c296653dc490b13f4f4cbf2d3511f202130fcd",
     "66d18ea2c0481d762784a9fbb01cb8f2c66b243ee95cda7cf99832d368d09476",
@@ -1196,6 +1197,7 @@
     "b5d75fb89346adef8199e63176661c704582a2154828174b2a2e3055f3ed7f96",
     "b69bdd6a5f4cd3036b30bd979101850334899bc8c42cf1a19391adbe11d19f60",
     "b7d32c0f30862486a338725b634f1fdb94c5d2c5c1c12e8846fe40342116b45f",
+    "b80bd2d5183097b7364300917b2194b619388c8a5b6610cb9203bed3885fcc05",
     "b85553cffa474278f1ed3f6714177d849cff2299067ff3af7a16a0b4a5e694e5",
     "b8d729ac2aa6dab978b9200e9e94c62b101f6121f241744c3d7fb1f6f5ab7c79",
     "b8f88b15bdb3069fa536c686ff3a8c310749a2cb1d219def6d0bdf418473f71a",
@@ -1242,6 +1244,7 @@
     "cd396100f512ca0565e28075c48c7bc0567019e58c2a43f0b141a4333e1e9404",
     "cd94f812f4c8acecef778b8e0280a1be793c86d07fd0630535ec17da7f95d49a",
     "cdfeb9e60b6412dcf9799a2feabad36f80d4b5e18b815d5e78d3c7c442074c16",
+    "ceb1bbf50035a24e248305fa5616283d2ccc6406a246582831a18b081c8c9d9b",
     "cfe9ed2f09ea12901694e80bcd366890f01d77e5f1207c31bda2230d84ce4284",
     "cff28b954956f573e5f45372f037ce7f12a1f08134e9b02493bb3fa6a9d2b7c2",
     "cff2d3e0479ca9139df1cf3e1de23a2254e0f669db7eaf70a5a0db0fe99a2618",
@@ -1336,34 +1339,17 @@
     "ffb2bfa5f0eff8424a834c203a7c53e57ce50379cef71a014b899d964fdb851b",
     "ffb579872bfa0d7b4c66fe1e97dbd4a175af653910cfda04016278b40d61ab90"
   ],
-  "priority": [
-    "666d7c23e4fcf0f3a216d139fd66d7c6ca06e75c4ced3b89e6402bffc0285d92"
-  ],
+  "priority": [],
   "failures": {
     "0a4ddf31fe54c68dffe7c8e0f56623d884d4992e6dd5fcc0ce479e559170ee5a": {
-      "attempts": 1,
+      "attempts": 2,
       "quarantined": false,
-      "retry_after": "2026-11-24T10:24:19+00:00"
+      "retry_after": "2026-11-24T13:39:32+00:00"
     },
     "154fc3724efe277130a9e9aea99b9c96f2ecc9ee27b4b9acea259bcc2e099b3f": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T10:24:19+00:00"
-    },
-    "666d7c23e4fcf0f3a216d139fd66d7c6ca06e75c4ced3b89e6402bffc0285d92": {
-      "attempts": 1,
-      "quarantined": false,
-      "retry_after": "2026-11-24T10:51:21+00:00"
-    },
-    "b80bd2d5183097b7364300917b2194b619388c8a5b6610cb9203bed3885fcc05": {
       "attempts": 2,
       "quarantined": false,
-      "retry_after": "2026-11-24T10:14:32+00:00"
-    },
-    "ceb1bbf50035a24e248305fa5616283d2ccc6406a246582831a18b081c8c9d9b": {
-      "attempts": 2,
-      "quarantined": false,
-      "retry_after": "2026-11-24T11:24:19+00:00"
+      "retry_after": "2026-11-24T13:39:32+00:00"
     }
   },
   "review_issues": {
@@ -1399,6 +1385,52 @@
       {
         "cache_key": "7d4bb110670fa5da032217b6a14d5224d01452542960420090f06d33b5a72f56",
         "reason": "Edit exceeds the local correction budget"
+      }
+    ],
+    "666d7c23e4fcf0f3a216d139fd66d7c6ca06e75c4ced3b89e6402bffc0285d92": [
+      {
+        "cache_key": "5cf27608b5fe5c21811b447032ddb2d5ad389e89b2eb66bc85593487c89f3302",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "c8e5a0e3a2748247edbe995aadb8e848e9b7cd00ec3a232d6987f773dcddc3c0",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "72203998cd12e5f3270c974d28d52cd8ed3ad89247a70670ada3eb94858cb39e",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "612e5b4ab7cc65f7c7f07c594a98a11f22eb0b85af35175685155b68046b89dd",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "4345515137e3956429f4f38080e64794bb81cf56f5fad9e67d539b629bdb31e0",
+        "reason": "占位符 ⟦0⟧ 由“裁剪矩形 矩形”解释，替换后会得到重复措辞“裁剪矩形 矩形”，无法安全修正占位符本身。"
+      },
+      {
+        "cache_key": "dc5feb1ffec33d4a6b1591aa1d0bf35ead9e0ea5ccd76dc65d0572324c44a45a",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "7f332eabc493fabf327859fee4c2e1fefa31d2e5a2047f28050c7b86a9e2b058",
+        "reason": "占位符 ⟦2⟧ 锁定为普通英文 antialiasing；译文无法在不违反占位符规则的情况下自然地改成对应中文。"
+      },
+      {
+        "cache_key": "a2fc45f4617ee349caaf0373b1731ddf851b70e3e91bfc148f996c50cb4c7db4",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "91467b38ba8841259a05540af79f4332aee6bfad78d955a9b22bbd2ace650c49",
+        "reason": "占位符 ⟦4⟧ 锁定为普通英文 global；译文无法安全地写成对应中文含义。"
+      },
+      {
+        "cache_key": "818683a0aab0958fb741eca356a1958563901a1bcdc79e3495b97413475a8681",
+        "reason": "占位符 ⟦0⟧ 锁定为 push Constants，术语大小写和译义无法在不修改占位符的情况下安全修正。"
+      },
+      {
+        "cache_key": "8d129f91d41880f21b3745ee47a647d35517367d90cf0e0f1422f53d08b45b30",
+        "reason": "Protected content was omitted, changed, or reordered"
       }
     ],
     "81fd1c7bfe1a71b80458f45350bf591e8602fe66d12b626cfb2aa586b8425c71": [
@@ -1499,6 +1531,60 @@
         "reason": "Edit exceeds the local correction budget"
       }
     ],
+    "b80bd2d5183097b7364300917b2194b619388c8a5b6610cb9203bed3885fcc05": [
+      {
+        "cache_key": "40cdc1981ce14a71ce85e7e814c153c6c0f1a642c9354143cb5045e817563af3",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "7eb1c112c0fc28bdcf09e69e8aa654ddda8e6a5ae84253f4f8f38b81d508ea2e",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "2e556198d92fd71428a3f862b06167d3afaf2eb68f9e0fc88c0bd18d46165733",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "50980d6c6e64b7da4c0258acb64c5ef4ac565a3f51f0e103153187ccaefbf23a",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "b413ef63e8675a111638e381f3db4e95268164c199f0879f8a23097f33aeb922",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "db1efb7a8abe78d63f3f8e21e782de5a88275604d7a339dcff8235442113e87b",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "d10d0381fb513bac453598b554ddf36e49447cfd742e5e7c8fe2b091f110c540",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "8659a1a23fe73d19a7cdfad4ae29c0a288c538100dd29b4190fc5d742280d6d2",
+        "reason": "译文被占位符锁定；其中的中文重复提及“数学协处理器”，没有准确表达“GPU 不仅是数学协处理器，而是一台具有复杂层次结构的并行吞吐机器”。"
+      },
+      {
+        "cache_key": "3d904a1f0a214daccd5e3a9cdbd7e380b5e32b302bae84316cce79cf11d90f40",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "7a86687d7d0ba28c7a5537354763418eae9cd95d4bee38bdb69860730189648c",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "2f9526cef70db0937659ef19e5ba887438329794720abc2b3425394dd51fbf27",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "cb82741124a55d8be4051e366845bed502c1e96e17ab693deb44c69593987a4d",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "a7905c10bb4e7a2ddf5b9997644cb279e95094ada3232e8c6cc00479c8f2b198",
+        "reason": "Edit exceeds the local correction budget"
+      }
+    ],
     "ca529f7ef0a115195016dcd77bac38a71f962180fa09f27e8c7425e6c25ccc3e": [
       {
         "cache_key": "119da3af5707510eb509dbc2216a48629dea54fca3fe1453c8d1698f0af1e8c1",
@@ -1514,6 +1600,76 @@
       },
       {
         "cache_key": "c3de8a02965926af5f13aa8ffd9a5fef1f77af91279d00f191a38b8305e1d93a",
+        "reason": "Edit exceeds the local correction budget"
+      }
+    ],
+    "ceb1bbf50035a24e248305fa5616283d2ccc6406a246582831a18b081c8c9d9b": [
+      {
+        "cache_key": "6e029884202c9196e36b92e5d9a90e9c7c258a6f27f406eef310db64e8091458",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "7bd688e951d21f89aee2920c122168b9106c00bd3a422fe911cf90426c7cafc7",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "9c6c10128e4dc95d893a88d8d8e965d2be9236e37c60f7b09b171e11ee505f64",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "46fa5ddd70cbb00f8b29ebce2439bc490fb8ae0e22d05b7fca1e2b1c2074f1a2",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "82686da86e3b4c4750640ee609a8db3cfab47dba934be6b96c083357abbfc424",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "77a7e460efc7b60573fdb2631eaabf965d3c637e7b37bd42ec284efbea49679c",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "7cf59c358b96f5567ca1cc4ef2c4a2c379ea27a6dbbda31ddd87b6f47cfc74ce",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "1cd56c512c71f79aa9f2119c1ff383e0708d0bfde5b7d4ed0bf846789021af94",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "9bfedf5a5dd7f4d4c16460fae35999aa47050375e14d827ceb570943e8a470e9",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "de890b86642bdaa04796d973ea418a1ba23fa941ae38d72ca89eec694d3a7de0",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "a1ca296f8186114d6f48ce4b628b6ed8721b0bc19ead91ceb23dbf208552467d",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "3f47ae9f9cbf6d5f5b2d3247a6db7630452995c8173ba54c08c57acb682fd4f7",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "6c5746c8ecfa116a84174e53a2d0c0991434e3c342e95bd2e7d47d9ba4fc4db5",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "21270f5205d7b9792f7974de3c45b2841884f66794d3231cdf08601ae28e691e",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "070a1834bb7073f2b7b7c0cc2df390283c515b3a2f5a5b597e13be9dbcc7965a",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "d9f729cedb640f7849ef9345ccd6163068bfc79099cfafe5c6f87d37b33ab4cd",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "0aa58e08f45e79cc5640d142bc39c380c9b2e66123efe225ab8d7417f8335a6f",
         "reason": "Edit exceeds the local correction budget"
       }
     ],
@@ -1545,13 +1701,13 @@
     ]
   },
   "eligible": 445,
-  "processed": 440,
-  "pending": 5,
-  "priority_pending": 1,
-  "backfill_pending": 4,
+  "processed": 443,
+  "pending": 2,
+  "priority_pending": 0,
+  "backfill_pending": 2,
   "rejected": 0,
   "deferred": 0,
   "backfill_complete": false,
-  "retry_after": "2026-11-24T10:14:32+00:00",
+  "retry_after": "2026-11-24T13:39:32+00:00",
   "stopped_reason": "limit"
 }
