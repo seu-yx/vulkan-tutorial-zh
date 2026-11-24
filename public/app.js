@@ -273,7 +273,9 @@
     const wordCount = englishText ? englishText.split(/\s+/).length : $('#article-content').textContent.split(/\s+/).length;
     $('#reading-time').textContent = `约 ${Math.max(1, Math.ceil(wordCount / 220))} 分钟阅读`;
     const translated = Number(page.translated ?? page.stats?.translated ?? 0), total = Number(page.total ?? page.stats?.total ?? 0);
-    $('#translation-status').textContent = total ? `Google 翻译 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : 'Google 翻译 · 可随时对照原文';
+    const translationStatus = total ? `Google 翻译 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : 'Google 翻译 · 可随时对照原文';
+    const polished = Number(page.stats?.polished ?? 0);
+    $('#translation-status').textContent = polished > 0 ? `${translationStatus} · ${polished} 段已校订` : translationStatus;
     const pending = total > translated;
     const notice = $('#notice'); notice.hidden = !pending;
     if (pending) notice.textContent = '本章翻译正在补全，尚未翻译的段落保留英文。你可以随时切换到英文或中英对照阅读。';

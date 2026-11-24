@@ -103,6 +103,7 @@ jobs:
           python scripts/sync.py --provider google --workers 1 --delay 2 \
             --translate-limit "$TRANSLATE_LIMIT" --translation-seconds 600 \
             --import-cache translations/google.jsonl --export-cache translations/google.jsonl
+          python scripts/polish.py --apply
           python scripts/ci_gate.py --record
           python tests/check_site.py
           python scripts/audit_terminology.py

@@ -82,6 +82,8 @@ def build_site(cache, no_fetch=False):
     if no_fetch:
         command.append("--no-fetch")
     run(command)
+    if (ROOT / "translations" / "polish.json").is_file():
+        run([virtual_python(), ROOT / "scripts" / "polish.py", "--apply"])
 
 
 def validate_site(directory):
