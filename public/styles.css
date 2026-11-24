@@ -64,3 +64,10 @@ body.sidebar-resizing main,body.sidebar-resizing .sidebar{transition:none}
 @media(max-width:999px){.sidebar{width:284px;max-width:calc(100vw - 24px)}.sidebar-resizer{display:none}body.search-open .sidebar{padding-top:68px}}
 @media(max-width:640px){.header-actions{gap:5px}.header-search{left:12px;right:12px;max-width:none}.header-search input{font-size:16px}.site-header{gap:8px}}
 @media print{.sidebar-resizer{display:none!important}}
+
+/* Match the upstream dark rendering of SVGs and honor its no-invert role. */
+@media screen {
+  :root[data-theme=dark] .article-content img[src$=".svg"]:not(.no-invert, .no-invert *) {
+    filter: invert(1);
+  }
+}
