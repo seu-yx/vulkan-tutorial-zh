@@ -61,6 +61,13 @@ SEED = {
     "Shader modules": "着色器模块", "Graphics pipeline basics": "图形管线基础",
     "Vertex input description": "顶点输入描述", "Descriptor layout and buffer": "描述符布局与缓冲区",
     "Descriptor pool and sets": "描述符池与描述符集",
+    "Tooling": "开发工具", "TLAS Animation": "TLAS 动画", "NNEF Introduction": "NNEF 简介",
+    "Engine Architecture: Component Systems": "引擎架构：组件系统",
+    "GUI: Setting Up Dear ImGui": "GUI：配置 Dear ImGui",
+    "Slang for Spatial Shaders: Single-Pass Stereo and Beyond": "用于空间着色器的 Slang：单遍立体渲染及更多应用",
+    "Slang Architecture for N-View Shaders": "N 视图着色器的 Slang 架构",
+    "Slang Architecture": "Slang 架构",
+    "Storing the Plenoptic Function": "存储全光函数",
 }
 SEED_CASEFOLD = {text.casefold(): translation for text, translation in SEED.items()}
 GROUPS = {

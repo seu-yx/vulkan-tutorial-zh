@@ -27,18 +27,18 @@ class GitGateTests(unittest.TestCase):
 
     def test_polish_backfill_resumes_without_an_upstream_change(self):
         state = {'commit': 'abc', 'pending': 0}
-        polish = {'version': 1, 'pending': 30, 'retry_after': None}
+        polish = {'version': 2, 'pending': 5, 'retry_after': None}
         self.assertTrue(gate.needs_build(state, 'abc', 'schedule', polish=polish, now=self.now)[0])
 
     def test_missing_or_finished_polish_inventory_does_not_start_a_build(self):
         state = {'commit': 'abc', 'pending': 0}
-        for polish in (None, {}, {'version': 1, 'pending': 0}, {'version': 1, 'pending': 0, 'backfill_complete': True}):
+        for polish in (None, {}, {'version': 2, 'pending': 0}, {'version': 2, 'pending': 0, 'backfill_complete': True}):
             with self.subTest(polish=polish):
                 self.assertFalse(gate.needs_build(state, 'abc', 'schedule', polish=polish, now=self.now)[0])
 
     def test_polish_service_cooldown_skips_until_the_exact_retry_time(self):
         state = {'commit': 'abc', 'pending': 0}
-        polish = {'version': 1, 'pending': 30, 'retry_after': '2026-11-24T12:00:01Z'}
+        polish = {'version': 2, 'pending': 5, 'retry_after': '2026-11-24T12:00:01Z'}
         self.assertFalse(gate.needs_build(state, 'abc', 'schedule', polish=polish, now=self.now)[0])
         polish['retry_after'] = '2026-11-24T12:00:00Z'
         self.assertTrue(gate.needs_build(state, 'abc', 'schedule', polish=polish, now=self.now)[0])
@@ -47,7 +47,7 @@ class GitGateTests(unittest.TestCase):
 
     def test_polish_cooldown_does_not_block_google_or_project_changes(self):
         complete = {'commit': 'abc', 'pending': 0}
-        cooldown = {'version': 1, 'pending': 30, 'retry_after': '2026-12-01T00:00:00Z'}
+        cooldown = {'version': 2, 'pending': 5, 'retry_after': '2026-12-01T00:00:00Z'}
         for previous, sha, event, force in (
             ({'commit': 'abc', 'pending': 3}, 'abc', 'schedule', False),
             (complete, 'def', 'schedule', False),
@@ -59,19 +59,21 @@ class GitGateTests(unittest.TestCase):
 
     def test_disabled_polish_does_not_rebuild_for_its_backlog(self):
         state = {'commit': 'abc', 'pending': 0}
-        polish = {'version': 1, 'pending': 30, 'retry_after': None}
+        polish = {'version': 2, 'pending': 5, 'retry_after': None}
         self.assertFalse(gate.needs_build(state, 'abc', 'schedule', polish=polish,
                                          polish_enabled=False, now=self.now)[0])
 
     def test_invalid_polish_state_does_not_trigger_ai_work(self):
         for polish in (
-            {'version': 2, 'pending': 30},
-            {'version': 1, 'pending': '30'},
-            {'version': 1, 'pending': True},
-            {'version': 1, 'pending': -1},
-            {'version': 1, 'pending': 30, 'retry_after': 'not-a-date'},
-            {'version': 1, 'pending': 30, 'retry_after': '2026-11-24T12:00:00'},
-            {'version': 1, 'pending': 30, 'retry_after': 1795521600},
+            {'version': 1, 'pending': 30},
+            {'version': 3, 'pending': 5},
+            {'version': True, 'pending': 5},
+            {'version': 2, 'pending': '5'},
+            {'version': 2, 'pending': True},
+            {'version': 2, 'pending': -1},
+            {'version': 2, 'pending': 5, 'retry_after': 'not-a-date'},
+            {'version': 2, 'pending': 5, 'retry_after': '2026-11-24T12:00:00'},
+            {'version': 2, 'pending': 5, 'retry_after': 1795521600},
         ):
             with self.subTest(polish=polish):
                 self.assertFalse(gate.polish_ready(polish, self.now))

@@ -13,8 +13,8 @@ UPSTREAM = 'https://github.com/KhronosGroup/Vulkan-Tutorial.git'
 
 
 def polish_ready(state, now=None):
-    """Resume a known backlog only when its service cooldown has expired."""
-    if not isinstance(state, dict) or state.get('version') != 1:
+    """Resume a chapter backlog only when its service cooldown has expired."""
+    if not isinstance(state, dict) or type(state.get('version')) is not int or state['version'] != 2:
         return False
     pending = state.get('pending', 0)
     if type(pending) is not int or pending <= 0:
@@ -42,7 +42,7 @@ def needs_build(previous, remote_sha, event, force=False, *, polish=None,
     if int(previous.get('pending', 0)) > 0:
         return True, 'cached translations have pending paragraphs'
     if polish_enabled and polish_ready(polish, now):
-        return True, 'cached polish inventory has pending paragraphs ready to resume'
+        return True, 'cached polish inventory has pending chapters ready to resume'
     return False, 'upstream Git commit unchanged; no translations or polish ready to resume'
 
 

@@ -145,129 +145,19 @@ class ParagraphSafetyTests(unittest.TestCase):
         # Counter is the same caller-facing diagnostic accumulator used by the scan.
         from collections import Counter
         counts = Counter(counts)
-        self.assertEqual(list(polish.paragraphs(document(CHINESE * 120), "chapter", counts)), [])
+        self.assertEqual(list(polish.paragraphs(document(CHINESE * 5000), "chapter", counts)), [])
         self.assertEqual(counts["too_long"], 1)
 
 
-class PreviewAndApplyTests(unittest.TestCase):
+def confirmed(chapter, edits=None):
+    return {"chapter_id": chapter["id"], "chapter_key": chapter["key"],
+            "reviewed_complete": True, "reviewed_count": chapter["editable_count"],
+            "edits": edits or {}}
+
+
+class ChapterWorkflowTests(unittest.TestCase):
     def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="polish-tests-")
-        self.root = Path(self.temporary.name)
-        self.data = self.root / "data"
-        self.page = self.data / "pages/overview.json"
-        self.page.parent.mkdir(parents=True)
-        self.preview_dir = self.root / "preview"
-        self.write_page()
-
-    def tearDown(self):
-        self.temporary.cleanup()
-
-    def write_page(self, english=ENGLISH):
-        soup = document(RICH_CHINESE, english)
-        pre = soup.new_tag("pre")
-        code = soup.new_tag("code")
-        code.string = "const auto devices = instance.enumeratePhysicalDevices();\n"
-        pre.append(code)
-        soup.article.append(pre)
-        self.page.write_text(json.dumps({"id": "overview", "title": "Physical devices", "html": str(soup), "stats": {"translated": 1, "total": 1}}, ensure_ascii=False), encoding="utf-8")
-
-    def test_preview_receives_english_and_draft_and_only_reviewed_apply_changes_page(self):
-        baseline = self.page.read_bytes()
-        source = BeautifulSoup(json.loads(baseline)["html"], "html.parser")
-        captured = []
-
-        def answer(chapter, items, model):
-            captured.append((chapter, items, model))
-            return {item["id"]: item["Chinese"].replace("初始化以后", "初始化后") for item in items}
-
-        with patch.object(polish, "copilot", side_effect=answer), contextlib.redirect_stdout(io.StringIO()):
-            polish.preview(self.data, "overview", {}, 1, self.preview_dir, "test-model")
-        self.assertEqual(self.page.read_bytes(), baseline, "Preview must leave the generated chapter untouched")
-        chapter, items, model = captured[0]
-        self.assertEqual((chapter, model), ("Physical devices", "test-model"))
-        self.assertEqual(items[0]["English"], ENGLISH)
-        self.assertIn("初始化以后", items[0]["Chinese"])
-        self.assertIn("⟦0⟧", items[0]["Chinese"])
-        self.assertIn("交换链", items[0]["protected"])
-        report = json.loads((self.preview_dir / "review.json").read_text(encoding="utf-8"))["paragraphs"][0]
-        self.assertEqual(report["status"], "edited")
-        self.assertEqual(report["english"], ENGLISH)
-        self.assertEqual(report["google"], source.select_one(".vt-zh").get_text())
-        self.assertEqual(report["polished"], report["google"].replace("初始化以后", "初始化后"))
-
-        reviewed = polish.read_cache(self.preview_dir / "polish.json")
-        self.assertEqual(polish.apply_cache(self.data, ["overview"], reviewed), (1, 1))
-        changed = json.loads(self.page.read_text(encoding="utf-8"))
-        result = BeautifulSoup(changed["html"], "html.parser")
-        self.assertEqual(result.select_one(".vt-en").get_text(), source.select_one(".vt-en").get_text())
-        self.assertEqual(result.select_one(".vt-zh").get_text(), report["polished"])
-        self.assertEqual(result.pre.code.get_text(), source.pre.code.get_text())
-        for selector in (".vt-term", ".vt-zh a", ".vt-zh code"):
-            self.assertEqual(str(result.select_one(selector)), str(source.select_one(selector)))
-        self.assertEqual(changed["stats"]["polished"], 1)
-        applied_bytes = self.page.read_bytes()
-        self.assertEqual(polish.apply_cache(self.data, ["overview"], reviewed), (0, 0))
-        self.assertEqual(self.page.read_bytes(), applied_bytes)
-
-    def test_rejected_model_result_is_reviewable_and_never_enters_applied_cache(self):
-        baseline = self.page.read_bytes()
-        with patch.object(polish, "copilot", return_value={}), contextlib.redirect_stdout(io.StringIO()):
-            polish.preview(self.data, "overview", {}, 1, self.preview_dir, None)
-        report = json.loads((self.preview_dir / "review.json").read_text(encoding="utf-8"))["paragraphs"][0]
-        self.assertEqual(report["status"], "rejected")
-        self.assertIn("reason", report)
-        self.assertEqual(polish.read_cache(self.preview_dir / "polish.json"), {})
-        self.assertEqual(polish.apply_cache(self.data, ["overview"], {}), (0, 0))
-        self.assertEqual(self.page.read_bytes(), baseline)
-
-    def test_source_update_does_not_apply_a_previously_reviewed_edit(self):
-        paragraph = first_paragraph(RICH_CHINESE)
-        reviewed = {paragraph.key: paragraph.draft.replace("初始化以后", "初始化后")}
-        self.write_page(english=ENGLISH.replace("supports", "does not support"))
-        updated_source = self.page.read_bytes()
-        self.assertEqual(polish.apply_cache(self.data, ["overview"], reviewed), (0, 0))
-        self.assertEqual(self.page.read_bytes(), updated_source)
-
-    def test_unchanged_result_is_recorded_to_avoid_repeat_preview_calls(self):
-        def unchanged(_chapter, items, _model): return {item["id"]: item["Chinese"] for item in items}
-        with patch.object(polish, "copilot", side_effect=unchanged), contextlib.redirect_stdout(io.StringIO()):
-            polish.preview(self.data, "overview", {}, 1, self.preview_dir, None)
-        reviewed = polish.read_cache(self.preview_dir / "polish.json")
-        report = json.loads((self.preview_dir / "review.json").read_text(encoding="utf-8"))["paragraphs"][0]
-        self.assertEqual(report["status"], "unchanged")
-        self.assertEqual(polish.apply_cache(self.data, ["overview"], reviewed), (0, 0))
-        with patch.object(polish, "copilot") as remote, contextlib.redirect_stdout(io.StringIO()):
-            polish.preview(self.data, "overview", reviewed, 1, self.root / "second-preview", None)
-        remote.assert_not_called()
-
-
-class CopilotAdapterTests(unittest.TestCase):
-    def test_cli_request_includes_both_sources_and_isolated_auth_without_real_process(self):
-        paragraph = first_paragraph(RICH_CHINESE, english=ENGLISH + " See @reference for the example.")
-        item = paragraph.request()
-        expected = {paragraph.key: paragraph.draft}
-        fake = SimpleNamespace(returncode=0, stdout="```json\n" + json.dumps(expected, ensure_ascii=False) + "\n```", stderr="")
-        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token", "UNRELATED_SECRET": "must-not-be-passed"}, clear=True), \
-             patch.object(polish.shutil, "which", return_value="/mock/copilot"), \
-             patch.object(polish.subprocess, "run", return_value=fake) as process:
-            self.assertEqual(polish.copilot("Physical devices", [item], "test-model"), expected)
-        command = process.call_args.args[0]
-        prompt = command[command.index("-p") + 1]
-        payload = json.loads(prompt.splitlines()[-1])
-        self.assertEqual(payload["paragraphs"][0]["English"], item["English"])
-        self.assertEqual(payload["paragraphs"][0]["Chinese"], item["Chinese"])
-        self.assertNotIn("@reference", prompt, "Document text must not become a CLI file mention")
-        self.assertIn("--model=test-model", command)
-        options = process.call_args.kwargs
-        self.assertEqual(options["stdin"], subprocess.DEVNULL)
-        self.assertNotIn("UNRELATED_SECRET", options["env"])
-        self.assertEqual(options["env"]["GITHUB_TOKEN"], "unit-test-token")
-        self.assertNotEqual(Path(options["cwd"]).resolve(), MODULE_PATH.parent.parent)
-
-
-class AutomaticWorkflowTests(unittest.TestCase):
-    def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="polish-auto-tests-")
+        self.temporary = tempfile.TemporaryDirectory(prefix="polish-chapter-tests-")
         self.root = Path(self.temporary.name)
         self.data = self.root / "data"
         self.cache = self.root / "polish.json"
@@ -284,155 +174,274 @@ class AutomaticWorkflowTests(unittest.TestCase):
         self.environment.stop()
         self.temporary.cleanup()
 
-    def add_page(self, page_id, *, english=ENGLISH, chinese=CHINESE, count=1):
-        soup = BeautifulSoup('<article></article>', "html.parser")
+    def page_file(self, page_id):
+        return self.data / "pages" / (page_id + ".json")
+
+    def add_page(self, page_id, *, count=1, english=ENGLISH, chinese=RICH_CHINESE, duplicate=False):
+        soup = BeautifulSoup('<article><h1>Chapter title</h1></article>', "html.parser")
         for index in range(count):
-            pair = document(chinese, english + f" Stage {index}.").select_one(".vt-pair")
-            soup.article.append(pair)
-        path = self.data / "pages" / (page_id + ".json")
+            text = english if count == 1 or duplicate else english + f" Stage {index}."
+            soup.article.append(document(chinese, text).select_one(".vt-pair"))
+        pending = soup.new_tag("div", attrs={"class": "vt-pair vt-pending"})
+        source = soup.new_tag("p", attrs={"class": "vt-en"})
+        source.string = "This not-yet-translated paragraph is still full chapter context."
+        pending.append(source)
+        soup.article.append(pending)
+        pre = soup.new_tag("pre")
+        code = soup.new_tag("code")
+        code.string = "DO_NOT_SEND_CODE_LISTING_CONTENT();\n"
+        pre.append(code)
+        soup.article.append(pre)
+        path = self.page_file(page_id)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"id": page_id, "title": page_id, "html": str(soup)}, ensure_ascii=False), encoding="utf-8")
+        path.write_text(json.dumps({"id": page_id, "title": page_id,
+                                   "titleZh": "中文章节标题", "html": str(soup)}, ensure_ascii=False), encoding="utf-8")
         if page_id not in self.pages:
             self.pages.append(page_id)
 
+    @staticmethod
+    def unchanged(chapter, _items, _model, **_options):
+        return confirmed(chapter)
+
     def run_auto(self, **options):
-        entries = polish.read_cache(self.cache)
         kwargs = dict(cache_file=self.cache, state_file=self.state, report_file=self.report,
-                      limit=30, seconds=180, model="test-model", backfill=True)
+                      limit=5, seconds=420, model="test-model", backfill=True)
         kwargs.update(options)
         with contextlib.redirect_stdout(io.StringIO()):
-            return polish.auto_polish(self.data, self.pages, entries, **kwargs)
+            return polish.auto_polish(self.data, self.pages, polish.read_cache(self.cache), **kwargs)
 
-    @staticmethod
-    def unchanged(_chapter, items, _model, **_options):
-        return {item["id"]: item["Chinese"] for item in items}
+    def test_preview_is_one_complete_chapter_even_with_legacy_paragraph_limit(self):
+        self.add_page("overview", count=8)
+        baseline = self.page_file("overview").read_bytes()
+        destination = self.root / "preview"
+        captured = []
 
-    def test_inventory_backfill_advances_with_unchanged_results_without_repeat_calls(self):
-        self.add_page("overview", count=3)
+        def answer(chapter, items, model, **options):
+            captured.append((chapter, items, model, options))
+            editable = [item for item in items if item["editable"]]
+            return confirmed(chapter, {editable[0]["id"]: editable[0]["Chinese"].replace("初始化以后", "初始化后")})
+
+        with patch.object(polish, "copilot", side_effect=answer) as remote, contextlib.redirect_stdout(io.StringIO()):
+            polish.preview(self.data, "overview", {}, 1, destination, "test-model", seconds=420)
+        remote.assert_called_once()
+        chapter, units, model, options = captured[0]
+        self.assertEqual((chapter["id"], chapter["titleZh"] if "titleZh" in chapter else chapter["title_zh"]), ("overview", "中文章节标题"))
+        self.assertEqual(chapter["editable_count"], 8)
+        self.assertEqual([item["id"] for item in units if item["editable"]], [str(index) for index in range(1, 9)])
+        self.assertTrue(any(item["kind"] == "untranslated" and "not-yet-translated" in (item["English"] or "") for item in units))
+        self.assertNotIn("DO_NOT_SEND_CODE_LISTING_CONTENT", json.dumps(units))
+        self.assertEqual(self.page_file("overview").read_bytes(), baseline)
+        review = json.loads((destination / "review.json").read_text(encoding="utf-8"))
+        self.assertTrue(review["complete"])
+        self.assertEqual(len(review["paragraphs"]), 8)
+        approved = polish.read_cache(destination / "polish.json")
+        self.assertEqual(len(approved), 1)
+        self.assertEqual(polish.apply_cache(self.data, self.pages, approved), (1, 1))
+        self.assertEqual(polish.apply_cache(self.data, self.pages, approved), (0, 0))
+
+    def test_each_auto_call_has_one_chapter_and_progress_counts_chapters(self):
+        self.add_page("first", count=7)
+        self.add_page("second", count=3)
         with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
             self.run_auto(limit=1)
-            first = remote.call_args.args[1][0]["id"]
+            self.assertEqual(remote.call_count, 1)
+            self.assertEqual(remote.call_args.args[0]["id"], "first")
+            self.assertEqual(remote.call_args.args[0]["editable_count"], 7)
             self.run_auto(limit=1)
-            self.assertNotEqual(remote.call_args.args[1][0]["id"], first)
-            self.run_auto(limit=1)
+            self.assertEqual(remote.call_count, 2)
+            self.assertEqual(remote.call_args.args[0]["id"], "second")
         state = polish.read_state(self.state)
-        self.assertEqual((state["eligible"], state["processed"], state["pending"]), (3, 3, 0))
+        self.assertEqual((state["version"], state["eligible"], state["processed"], state["pending"]), (2, 2, 2, 0))
         self.assertTrue(state["backfill_complete"])
-        self.assertEqual(len(polish.read_cache(self.cache)), 3)
         with patch.object(polish, "copilot") as remote:
             self.run_auto()
         remote.assert_not_called()
 
-    def test_new_and_changed_keys_keep_priority_over_older_backfill(self):
+    def test_new_or_modified_chapters_keep_absolute_priority(self):
         self.add_page("old")
         self.add_page("modified")
         with patch.object(polish, "copilot") as remote:
             self.run_auto(backfill=False)
         remote.assert_not_called()
-        self.add_page("modified", english=ENGLISH + " The original paragraph changed.")
+        self.add_page("modified", english=ENGLISH + " The source changed.")
         self.add_page("new")
         with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
             self.run_auto(limit=1)
-            self.assertEqual(remote.call_args.args[1][0]["chapter"], "modified")
+            self.assertEqual(remote.call_args.args[0]["id"], "modified")
             self.assertEqual(polish.read_state(self.state)["priority_pending"], 1)
             self.run_auto(limit=1)
-            self.assertEqual(remote.call_args.args[1][0]["chapter"], "new")
+            self.assertEqual(remote.call_args.args[0]["id"], "new")
             self.run_auto(limit=1)
-            self.assertEqual(remote.call_args.args[1][0]["chapter"], "old")
+            self.assertEqual(remote.call_args.args[0]["id"], "old")
 
-    def test_successful_batch_survives_later_service_failure_and_applies_before_exit(self):
-        self.add_page("overview", count=8)
+    def test_v1_partial_progress_and_cooldown_do_not_masquerade_as_complete_chapter(self):
+        self.add_page("overview", count=2)
+        chapter = polish.load_chapter(self.data, "overview", {})
+        block = chapter.editable["1"]
+        old_value = block.draft.replace("初始化以后", "初始化后")
+        self.cache.write_text(json.dumps({"version": 1, "entries": {block.key: old_value}}, ensure_ascii=False), encoding="utf-8")
+        self.state.write_text(json.dumps({"version": 1, "keys": [block.key], "priority": [], "failures": {},
+                                          "pending": 0, "retry_after": "2999-01-01T00:00:00+00:00", "stopped_reason": "cooldown"}), encoding="utf-8")
+        with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
+            self.run_auto()
+        remote.assert_called_once()
+        first = next(item for item in remote.call_args.args[1] if item["editable"])
+        self.assertIn("初始化后", first["Chinese"])
+        self.assertNotIn("初始化以后", first["Chinese"])
+        self.assertEqual(polish.read_cache(self.cache)[block.key], old_value, "Sparse omission must retain previously accepted v1 corrections")
+        self.assertEqual(polish.read_state(self.state)["processed"], 1)
+
+    def test_invalid_suggestions_are_rejected_but_confirmed_chapter_is_not_rebilled(self):
+        self.add_page("overview", count=3)
+
+        def answer(chapter, items, _model, **_options):
+            editable = [item for item in items if item["editable"]]
+            return confirmed(chapter, {"1": editable[0]["Chinese"].replace("初始化以后", "初始化后"),
+                                       "2": editable[1]["Chinese"].replace("⟦0⟧", "", 1)})
+
+        with patch.object(polish, "copilot", side_effect=answer):
+            report = self.run_auto()
+        self.assertEqual(report["chapters"][0]["status"], "complete_with_rejections")
+        self.assertEqual((report["chapters"][0]["edited"], report["chapters"][0]["rejected"]), (1, 1))
+        self.assertEqual((len(polish.read_cache(self.cache)), polish.read_state(self.state)["pending"]), (1, 0))
+        with patch.object(polish, "copilot") as remote:
+            self.run_auto()
+        remote.assert_not_called()
+
+    def test_missing_confirmation_wrong_identity_and_invented_ids_never_complete(self):
+        self.add_page("overview")
+        chapter = polish.load_chapter(self.data, "overview", {})
+        for answer in ({}, confirmed({**chapter.metadata, "key": "a" * 64}),
+                       {**confirmed(chapter.metadata), "reviewed_complete": False},
+                       {**confirmed(chapter.metadata), "reviewed_count": 999},
+                       confirmed(chapter.metadata, {"999": "错误内容"})):
+            with self.subTest(answer=answer):
+                with self.assertRaises(polish.InvalidPolishResponse): polish.review_chapter(chapter, answer, {})
+
+    def test_bad_chapter_response_does_not_block_next_chapter(self):
+        self.add_page("first")
+        self.add_page("second")
         calls = 0
 
         def answer(chapter, items, model, **options):
             nonlocal calls
             calls += 1
-            if calls == 2: raise ValueError("Account unavailable")
-            self.assertGreater(options["timeout"], 0)
-            self.assertLessEqual(options["timeout"], 100)
-            return {item["id"]: item["Chinese"].replace("初始化以后", "初始化后") for item in items}
+            if calls == 1: raise polish.InvalidPolishResponse("Truncated model JSON")
+            return confirmed(chapter)
+
+        with patch.object(polish, "copilot", side_effect=answer) as remote:
+            report = self.run_auto(limit=2)
+        self.assertEqual(remote.call_count, 2)
+        self.assertEqual([item["status"] for item in report["chapters"]], ["rejected_response", "complete"])
+        state = polish.read_state(self.state)
+        self.assertEqual((state["processed"], state["pending"]), (1, 1))
+        self.assertIsNotNone(state["retry_after"])
+
+    def test_successful_chapter_is_saved_if_later_service_fails_and_cached_edits_still_apply(self):
+        self.add_page("first")
+        self.add_page("second")
+        calls = 0
+
+        def answer(chapter, items, model, **options):
+            nonlocal calls
+            calls += 1
+            if calls == 2: raise ValueError("Account or quota unavailable")
+            self.assertLessEqual(options["timeout"], 180)
+            block = next(item for item in items if item["editable"])
+            return confirmed(chapter, {block["id"]: block["Chinese"].replace("初始化以后", "初始化后")})
 
         with patch.object(polish, "copilot", side_effect=answer):
-            report = self.run_auto(limit=8)
-        self.assertEqual(report["stopped_reason"], "service_error")
-        self.assertEqual(report["applied"], 6)
-        self.assertEqual(len(polish.read_cache(self.cache)), 6)
-        self.assertEqual(polish.read_state(self.state)["pending"], 2)
+            report = self.run_auto(limit=2)
+        self.assertEqual((report["stopped_reason"], report["applied"]), ("service_error", 1))
+        self.assertEqual((len(polish.read_cache(self.cache)), polish.read_state(self.state)["processed"]), (1, 1))
         with patch.object(polish, "copilot") as remote:
             self.run_auto()
         remote.assert_not_called()
-        self.assertEqual(polish.read_state(self.state)["pending"], 2, "Already polished artifact identities must remain stable")
 
-    def test_no_auth_applies_old_v1_cache_without_ai_and_preserves_google_file(self):
-        self.add_page("reviewed")
-        self.add_page("pending")
-        page = json.loads((self.data / "pages/reviewed.json").read_text(encoding="utf-8"))
-        block = next(polish.paragraphs(BeautifulSoup(page["html"], "html.parser"), "reviewed"))
+    def test_no_auth_preserves_google_and_applies_old_v1_edits_without_marking_full_review(self):
+        self.add_page("overview")
+        chapter = polish.load_chapter(self.data, "overview", {})
+        block = chapter.editable["1"]
         self.cache.write_text(json.dumps({"version": 1, "entries": {block.key: block.draft.replace("初始化以后", "初始化后")}}, ensure_ascii=False), encoding="utf-8")
         google = self.root / "google.jsonl"
-        google.write_bytes(b"immutable Google base cache\n")
+        google.write_bytes(b"immutable Google cache\n")
         with patch.dict(os.environ, {}, clear=True), patch.object(polish, "copilot") as remote:
             report = self.run_auto()
         remote.assert_not_called()
-        self.assertEqual(report["stopped_reason"], "no_auth")
-        self.assertEqual(report["applied"], 1)
-        self.assertEqual(google.read_bytes(), b"immutable Google base cache\n")
-        self.assertIsNotNone(polish.read_state(self.state)["retry_after"])
+        self.assertEqual((report["stopped_reason"], report["applied"]), ("no_auth", 1))
+        self.assertEqual(polish.read_state(self.state)["processed"], 0)
+        self.assertEqual(google.read_bytes(), b"immutable Google cache\n")
 
-    def test_rejected_input_cools_down_and_is_quarantined_after_bounded_retries(self):
-        self.add_page("overview")
-        with patch.object(polish, "copilot", return_value={}):
-            self.run_auto()
-        with patch.object(polish, "copilot") as remote:
-            self.run_auto()
-        remote.assert_not_called()
-        for _ in range(2):
-            state = polish.read_state(self.state)
-            state["retry_after"] = "2000-01-01T00:00:00+00:00"
-            for failure in state["failures"].values(): failure["retry_after"] = "2000-01-01T00:00:00+00:00"
-            self.state.write_text(json.dumps(state), encoding="utf-8")
-            with patch.object(polish, "copilot", return_value={}):
-                self.run_auto()
-        state = polish.read_state(self.state)
-        self.assertEqual((state["pending"], state["rejected"]), (0, 1))
-        with patch.object(polish, "copilot") as remote:
-            self.run_auto()
-        remote.assert_not_called()
-
-    def test_all_individual_cooldowns_publish_earliest_global_retry_for_gate(self):
-        self.add_page("overview", count=2)
-        with patch.object(polish, "copilot"):
-            self.run_auto(backfill=False)
-        state = polish.read_state(self.state)
-        first = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(timespec="seconds")
-        second = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(timespec="seconds")
-        state["failures"] = {key: {"attempts": 1, "quarantined": False, "retry_after": date} for key, date in zip(state["keys"], [first, second])}
-        self.state.write_text(json.dumps(state), encoding="utf-8")
-        with patch.object(polish, "copilot") as remote:
-            self.run_auto()
-        remote.assert_not_called()
-        self.assertEqual(polish.read_state(self.state)["retry_after"], first)
-
-    def test_malformed_batch_records_per_paragraph_attempts_for_recovery(self):
-        self.add_page("overview")
-        with patch.object(polish, "copilot", side_effect=polish.InvalidPolishResponse("Invalid JSON")):
+    def test_oversized_chapter_is_reported_without_splitting_or_calling_model(self):
+        self.add_page("overview", count=3)
+        with patch.object(polish, "MAX_CHAPTER_INPUT_BYTES", 1000), patch.object(polish, "copilot") as remote:
             report = self.run_auto()
-        self.assertEqual(report["stopped_reason"], "rejected_batch")
-        self.assertEqual(report["paragraphs"][0]["reason"], "Invalid JSON")
-        state = polish.read_state(self.state)
-        self.assertEqual(next(iter(state["failures"].values()))["attempts"], 1)
-        self.assertFalse(polish.read_cache(self.cache))
+        remote.assert_not_called()
+        self.assertEqual((report["deferred"], report["pending"]), (1, 0))
+        self.assertGreater(report["deferred_chapters"][0]["input_bytes"], 1000)
+        self.assertFalse(polish.read_state(self.state)["backfill_complete"])
 
-    def test_preview_splits_long_blocks_by_input_size_and_auto_bounds_timeout(self):
-        self.add_page("overview", english=ENGLISH * 20, chinese=CHINESE * 25, count=3)
-        with patch.object(polish, "copilot", side_effect=self.unchanged) as remote, contextlib.redirect_stdout(io.StringIO()):
-            polish.preview(self.data, "overview", {}, 3, self.root / "preview", "test-model")
-        self.assertGreater(remote.call_count, 1)
-        self.assertTrue(all(len(call.args[1]) < 3 for call in remote.call_args_list))
-        with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
-            self.run_auto(limit=1, seconds=5)
-        self.assertGreater(remote.call_args.kwargs["timeout"], 0)
-        self.assertLessEqual(remote.call_args.kwargs["timeout"], 5)
+    def test_fingerprint_is_stable_after_apply_and_changes_with_either_title_or_source(self):
+        self.add_page("overview")
+        original = polish.load_chapter(self.data, "overview", {})
+        block = original.editable["1"]
+        entries = {block.key: block.draft.replace("初始化以后", "初始化后")}
+        polish.apply_cache(self.data, self.pages, entries)
+        self.assertEqual(polish.load_chapter(self.data, "overview", entries).key, original.key)
+        page = json.loads(self.page_file("overview").read_text(encoding="utf-8"))
+        page["titleZh"] = "更正后的中文章节标题"
+        self.page_file("overview").write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
+        self.assertNotEqual(polish.load_chapter(self.data, "overview", entries).key, original.key)
+
+    def test_duplicate_cache_keys_have_one_editable_id_and_no_conflicting_writes(self):
+        self.add_page("overview", count=2, duplicate=True)
+        chapter = polish.load_chapter(self.data, "overview", {})
+        self.assertEqual(len(chapter.editable), 1)
+        self.assertTrue(any(item.get("duplicate_of") == "1" and not item["editable"] for item in chapter.units))
+        before = chapter.bases[chapter.editable["1"].key].chinese.get_text()
+        edits = {"1": chapter.editable["1"].draft.replace("初始化以后", "初始化后")}
+        updated, audit, complete = polish.review_chapter(chapter, confirmed(chapter.metadata, edits), {})
+        self.assertTrue(complete)
+        self.assertEqual(len(updated), 1)
+        self.assertEqual(audit[0]["google"], before)
+        self.assertEqual(chapter.bases[chapter.editable["1"].key].chinese.get_text(), before)
+
+    def test_short_translated_labels_can_be_corrected_but_terms_stay_protected(self):
+        soup = BeautifulSoup('<div class="vt-pair"><h2 class="vt-en">Attribution</h2><h2 class="vt-zh">归属</h2></div>', "html.parser")
+        block = next(polish.paragraphs(soup, "chapter"))
+        block.restore("署名")
+        self.assertEqual(block.chinese.get_text(), "署名")
+
+
+class CopilotAdapterTests(unittest.TestCase):
+    def test_full_long_chapter_goes_through_stdin_not_windows_argv(self):
+        chapter = {"id": "long-chapter", "key": "a" * 64, "title": "Long chapter", "title_zh": "长章节", "editable_count": 1}
+        units = [{"id": "1", "editable": True, "English": (ENGLISH + " See @reference. ") * 240,
+                  "Chinese": CHINESE * 140, "protected": []}]
+        expected = confirmed(chapter)
+        result = SimpleNamespace(returncode=0, stdout="```json\n" + json.dumps(expected) + "\n```", stderr="")
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token", "UNRELATED_SECRET": "never-pass"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish.subprocess, "run", return_value=result) as process:
+            self.assertEqual(polish.copilot(chapter, units, "test-model"), expected)
+        command = process.call_args.args[0]
+        options = process.call_args.kwargs
+        self.assertNotIn("-p", command)
+        self.assertIn("--model=test-model", command)
+        self.assertNotIn("stdin", options)
+        self.assertGreater(len(options["input"]), 32767)
+        self.assertLess(len(" ".join(command)), 4000)
+        self.assertNotIn("@reference", options["input"])
+        payload = json.loads(options["input"].splitlines()[-1])
+        self.assertEqual(payload["chapter"], chapter)
+        self.assertEqual(payload["blocks"][0]["English"], units[0]["English"])
+        self.assertEqual(payload["blocks"][0]["Chinese"], units[0]["Chinese"])
+        self.assertNotIn("UNRELATED_SECRET", options["env"])
+        self.assertEqual(options["env"]["GITHUB_TOKEN"], "unit-test-token")
+        self.assertNotEqual(Path(options["cwd"]).resolve(), MODULE_PATH.parent.parent)
+
+    def test_duplicate_json_edit_ids_are_rejected_without_guessing(self):
+        result = SimpleNamespace(returncode=0, stdout='{"edits":{"1":"甲","1":"乙"}}', stderr="")
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "unit-test-token"}, clear=True), patch.object(polish.shutil, "which", return_value="/mock/copilot"), patch.object(polish.subprocess, "run", return_value=result):
+            with self.assertRaises(polish.InvalidPolishResponse): polish.copilot("chapter", [], None)
 
 
 if __name__ == "__main__":
