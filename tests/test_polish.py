@@ -258,6 +258,19 @@ class ChapterWorkflowTests(unittest.TestCase):
             self.run_auto()
         remote.assert_not_called()
 
+    def test_manually_reviewed_translation_is_read_only_context(self):
+        self.add_page("overview", count=2)
+        path = self.page_file("overview")
+        page = json.loads(path.read_text(encoding="utf-8"))
+        soup = BeautifulSoup(page["html"], "html.parser")
+        soup.select_one(".vt-zh")["data-vt-reviewed"] = "true"
+        page["html"] = str(soup)
+        path.write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
+        chapter = polish.load_chapter(self.data, "overview", {})
+        self.assertEqual(len(chapter.editable), 1)
+        self.assertTrue(any(not unit["editable"] and unit.get("Chinese")
+                            for unit in chapter.units))
+
     def test_batch_deadline_does_not_mark_the_last_chapter_as_a_failure(self):
         self.add_page("first")
         self.add_page("second")
@@ -325,10 +338,51 @@ class ChapterWorkflowTests(unittest.TestCase):
             report = self.run_auto()
         self.assertEqual(report["chapters"][0]["status"], "complete_with_rejections")
         self.assertEqual((report["chapters"][0]["edited"], report["chapters"][0]["rejected"]), (1, 1))
-        self.assertEqual((len(polish.read_cache(self.cache)), polish.read_state(self.state)["pending"]), (1, 0))
+        state = polish.read_state(self.state)
+        self.assertEqual((len(polish.read_cache(self.cache)), state["pending"]), (1, 0))
+        rejected = report["paragraphs"][1]
+        self.assertEqual(state["review_issues"], {report["chapters"][0]["key"]: [
+            {"cache_key": rejected["cache_key"], "reason": rejected["reason"]}]})
         with patch.object(polish, "copilot") as remote:
             self.run_auto()
         remote.assert_not_called()
+
+    def test_reported_meaning_issue_stays_visible_without_rebilling_until_fingerprint_changes(self):
+        self.add_page("overview")
+        reason = "原文明确排除这些属性，机翻却表示保留。"
+        chapter = polish.load_chapter(self.data, "overview", {})
+        answer = {**confirmed(chapter.metadata), "issues": {"1": reason}}
+        with patch.object(polish, "copilot", return_value=answer):
+            report = self.run_auto()
+        issue = {"cache_key": chapter.editable["1"].key, "reason": reason}
+        self.assertEqual((report["chapters"][0]["status"], report["paragraphs"][0]["status"]),
+                         ("complete_with_review_issues", "needs_review"))
+        self.assertEqual(polish.read_cache(self.cache), {})
+        self.assertEqual(polish.read_state(self.state)["review_issues"], {chapter.key: [issue]})
+        with patch.object(polish, "copilot") as remote:
+            report = self.run_auto()
+        remote.assert_not_called()
+        self.assertEqual((report["pending"], report["review_issue_blocks"]), (0, 1))
+        self.add_page("overview", english=ENGLISH + " The source changed.")
+        with patch.object(polish, "copilot", side_effect=self.unchanged) as remote:
+            report = self.run_auto()
+        remote.assert_called_once()
+        self.assertEqual(report["review_issue_blocks"], 0)
+        self.assertEqual(polish.read_state(self.state)["review_issues"], {})
+
+    def test_invalid_issue_ids_and_reasons_are_rejected_before_edits_apply(self):
+        self.add_page("overview")
+        chapter = polish.load_chapter(self.data, "overview", {})
+        for issues in ([], {"999": "校核"}, {"context-2": "校核"}, {"1": "   "},
+                       {"1": 123}, {"1": "补" * (polish.MAX_REVIEW_ISSUE_LENGTH + 1)},
+                       {"1": "一行\n二行"}, {"1": "格式\u202e控制"}):
+            with self.subTest(issues=issues):
+                with self.assertRaises(polish.InvalidPolishResponse):
+                    polish.review_chapter(chapter, {**confirmed(chapter.metadata), "issues": issues}, {})
+        overlapping = {**confirmed(chapter.metadata, {"1": chapter.editable["1"].draft}),
+                       "issues": {"1": "原文含义需要检查"}}
+        with self.assertRaises(polish.InvalidPolishResponse):
+            polish.review_chapter(chapter, overlapping, {})
 
     def test_missing_confirmation_wrong_identity_and_invented_ids_never_complete(self):
         self.add_page("overview")

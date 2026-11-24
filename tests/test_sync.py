@@ -139,6 +139,11 @@ class MirrorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sync.restore_translation("VT00000 内容 VT00001 VT00009", tokens)
 
+    def test_exact_markers_keep_adjacent_english_intact(self):
+        tokens = {"__VT00000__": '<a href="https://example.com">', "__VT00001__": "</a>"}
+        result = sync.restore_translation("使用__VT00000__stb_image_resize__VT00001__", tokens)
+        self.assertEqual(result, '使用<a href="https://example.com">stb_image_resize</a>')
+
     def test_cache_key_includes_protected_api_and_link(self):
         base = "Use __VT00000__"
         first = sync.translation_key(base, {"__VT00000__": "<code>vkFoo</code>"}, "glossary")
