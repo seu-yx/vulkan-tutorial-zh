@@ -63,7 +63,11 @@ python scripts/local.py
 
 下载运行生成的 **polish-preview-<运行编号>**。`review.json` 逐段列出英文、Google 译文和润色稿。优先核对技术事实、否定、条件和因果关系，只采纳明确改善的局部修改。将 `polish.json` 中采纳的条目按 `id` 合并到最新的 `translations/polish.json`，通过 Git 提交。首次采纳时可移除该预览中不采纳的新条目，再把文件保存到这个路径。
 
-Pages 和本地构建会读取已合并的润色结果。原文、基础译文或受保护的内容变化时，旧的润色结果自动失效。预览是独立的手动任务，日常同步和 Pages 发布无需调用 Copilot。
+日常 Pages 同步也会在 Google 翻译完成后做小幅润色。新的或已变化的可处理译文优先，剩余配额接着校对既有章节。每次默认处理至多 30 个文本块，未完成部分在下次同步继续。也可手动运行 **Sync Vulkan tutorial and publish Pages**，通过 `polish_limit` 调整本轮上限。仓库 Actions 变量 `POLISH_ENABLED` 设为 `false` 可暂停自动润色。
+
+润色会逐句参照英文，仅修明显不通顺或不准确处。程序限制每段改动幅度，保护术语、代码、链接、数字及关键条件。保留已经通顺的译文，无法通过校验时回退到 Google 版本。遇到 Copilot 额度、权限或服务错误会暂停该轮润色，Google 翻译和 Pages 发布继续运行。GitHub 账户的 AI Credits 预算控制超额用量。 [GitHub 预算设置说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
+
+Pages 和本地构建会读取已同步的润色结果。原文、基础译文或受保护的内容变化时，旧的润色结果自动失效。`translations/polish-state.json` 记录待处理与已检查的进度，`translations/polish.json` 保存可重用的校订结果。手动预览仍可生成三方对照，供人工修订或抽查。
 
 > GitHub 公共仓库长期无活动时可能停用定时工作流；如发现不再更新，请在 Actions 中重新启用。可手动运行以补齐待译内容。
 
