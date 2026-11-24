@@ -1,0 +1,104 @@
+name: Polish translations preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      page:
+        description: Exact chapter ID (the page= value in its URL)
+        type: string
+        required: true
+      limit:
+        description: Maximum paragraphs to preview (1-30; consumes Copilot AI credits)
+        type: number
+        default: 12
+      model:
+        description: Optional Copilot model ID; leave blank for Copilot Auto
+        type: string
+        default: ''
+
+# Manual previews use the owner's Copilot entitlement in a personal repository.
+# No repository write, Pages deployment, or persistent personal token is needed.
+permissions:
+  contents: read
+
+concurrency:
+  group: vulkan-polish-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      copilot-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate the requested preview
+        env:
+          POLISH_PAGE: ${{ inputs.page }}
+          POLISH_LIMIT: ${{ inputs.limit }}
+          POLISH_MODEL: ${{ inputs.model }}
+        run: |
+          if [ -z "$POLISH_PAGE" ]; then
+            echo '::error::page must be an exact chapter ID from its URL'
+            exit 1
+          fi
+          if ! [[ "$POLISH_LIMIT" =~ ^[0-9]+$ ]] || [ "$POLISH_LIMIT" -lt 1 ] || [ "$POLISH_LIMIT" -gt 30 ]; then
+            echo '::error::limit must be an integer from 1 to 30'
+            exit 1
+          fi
+          if [ -n "$POLISH_MODEL" ] && ! [[ "$POLISH_MODEL" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+            echo '::error::model must be a Copilot model ID, or empty for Copilot Auto'
+            exit 1
+          fi
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install the build dependencies and pinned Copilot CLI
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build:syntax
+          python -m pip install -r requirements.txt
+          npm install --global @github/copilot@1.0.114 --registry=https://registry.npmjs.org --no-audit --no-fund
+      - name: Build the original Google translation for comparison
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python scripts/sync.py --skip-translate --import-cache translations/google.jsonl
+      - name: Preview a bounded batch with Copilot
+        timeout-minutes: 10
+        env:
+          # Scoped, short-lived token; grant copilot-requests above, not contents: write.
+          GITHUB_TOKEN: ${{ github.token }}
+          POLISH_PAGE: ${{ inputs.page }}
+          POLISH_LIMIT: ${{ inputs.limit }}
+          POLISH_MODEL: ${{ inputs.model }}
+          COPILOT_AUTO_UPDATE: 'false'
+          PYTHONUNBUFFERED: '1'
+        run: |
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo '::error::Copilot preview requires the built-in GITHUB_TOKEN and copilot-requests: write permission'
+            exit 1
+          fi
+          args=(--page "$POLISH_PAGE" --limit "$POLISH_LIMIT" --preview-dir .local/polish-preview --model "${POLISH_MODEL:-auto}")
+          python scripts/polish.py "${args[@]}"
+      - name: Upload the candidate cache and comparison for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: polish-preview-${{ github.run_id }}
+          path: |
+            .local/polish-preview/polish.json
+            .local/polish-preview/review.json
+          if-no-files-found: error
+          retention-days: 14

@@ -57,6 +57,14 @@ python scripts/local.py
 
 `translations/google.jsonl` 是稳定排序、可版本管理的译文存储；每个条目由原文、保护的代码/链接、术语表和 Google 缓存版本共同标识。它是可持久化的数据来源，不依赖可能被清理的 Actions 缓存。
 
+## 用 Copilot 试润色
+
+在 **Actions → Polish translations preview → Run workflow** 选择 `main`，填写章节 ID（例如 `01_Overview`，也可从阅读链接的 `page=` 参数取得），再设定段落数。默认 12 段，每次最多 30 段。模型留空时使用 Copilot Auto。工作流使用内置 `GITHUB_TOKEN`，仓库所有者须有可用的 Copilot CLI 额度，运行会消耗 Copilot AI credits。 [GitHub 官方说明](https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/copilot-cli-in-github-actions)
+
+下载运行生成的 **polish-preview-<运行编号>**。`review.json` 逐段列出英文、Google 译文和润色稿。优先核对技术事实、否定、条件和因果关系，只采纳明确改善的局部修改。将 `polish.json` 中采纳的条目按 `id` 合并到最新的 `translations/polish.json`，通过 Git 提交。首次采纳时可移除该预览中不采纳的新条目，再把文件保存到这个路径。
+
+Pages 和本地构建会读取已合并的润色结果。原文、基础译文或受保护的内容变化时，旧的润色结果自动失效。预览是独立的手动任务，日常同步和 Pages 发布无需调用 Copilot。
+
 > GitHub 公共仓库长期无活动时可能停用定时工作流；如发现不再更新，请在 Actions 中重新启用。可手动运行以补齐待译内容。
 
 ## 手动构建或翻译
