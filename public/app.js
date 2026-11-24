@@ -342,11 +342,24 @@
     // Asciidoctor document headers are already represented by the reader header.
     $$('h1', content).forEach(heading => { if (heading.textContent.trim() === state.page.title?.trim() || heading.textContent.trim() === state.page.titleZh?.trim()) { const pair = heading.closest('.vt-pair'); if (pair) pair.classList.add('duplicate-title'); else heading.classList.add('duplicate-title'); } });
     $$('pre', content).forEach(pre => {
-      const button = document.createElement('button'); button.className = 'copy-code'; button.type = 'button'; button.textContent = '复制'; button.setAttribute('aria-label', '复制代码');
+      const block = document.createElement('div');
+      block.className = 'code-block';
+      const button = document.createElement('button');
+      button.className = 'copy-code';
+      button.type = 'button';
+      button.textContent = '复制';
+      button.setAttribute('aria-label', '复制代码');
       button.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText($('code', pre)?.textContent || [...pre.childNodes].filter(node => node !== button).map(node => node.textContent).join('')); button.textContent = '已复制'; setTimeout(() => { button.textContent = '复制'; }, 1800); }
-        catch { notify('无法访问剪贴板，请选择代码后复制。'); }
-      }); pre.append(button);
+        try {
+          await navigator.clipboard.writeText($('code', pre)?.textContent ?? pre.textContent);
+          button.textContent = '已复制';
+          setTimeout(() => { button.textContent = '复制'; }, 1800);
+        } catch {
+          notify('无法访问剪贴板，请选择代码后复制。');
+        }
+      });
+      pre.replaceWith(block);
+      block.append(pre, button);
     });
     $$('a', content).forEach(link => { if (/^https?:\/\//.test(link.href) && new URL(link.href).origin !== location.origin) { link.target = '_blank'; link.rel = 'noopener noreferrer'; } });
     $$('img', content).forEach(image => { image.loading = 'lazy'; image.decoding = 'async'; });
