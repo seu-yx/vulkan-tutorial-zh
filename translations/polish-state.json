@@ -911,6 +911,7 @@
     "09bdff92c0c0ded9818f4c3d93d8fe08202da99b92ed6942c744606cb8cda9fc",
     "0a08f7d4d277e7e382bc00622a9b4070842d2a7cb3efa8ff1e8161aa115bdec3",
     "0a2243da3dced13bada83d0de4d92e592bad8f69036fbd9b969422a5c32abef6",
+    "0a4ddf31fe54c68dffe7c8e0f56623d884d4992e6dd5fcc0ce479e559170ee5a",
     "0ad3b544da5ecce08d4531c97822fd7615e39222ac70a1137ad12f11a4ce8eb0",
     "0b0a807d6f1641389757e12fa5e0f4dee4357f9777611c557ae47285b2106866",
     "0b2b734b802ae273fa5402ddd29e1c9f8b2fd2394f2fcc648e70655e328ec673",
@@ -929,6 +930,7 @@
     "12bbae018948ecd59c94d52058317db5eb3f722f74fec34ffad80d99643c22d0",
     "132d44dfadfb888670386759fb65e530707fc1ec42418ea50cf20ad47e862129",
     "144b066d5fb8948d62d4c4e91fa3df7bf09703e897314c32b277c4dcf4099385",
+    "154fc3724efe277130a9e9aea99b9c96f2ecc9ee27b4b9acea259bcc2e099b3f",
     "1650ab2fc580969500a456a782299dfc9d24c1bad9cec747aeb882b0d1f04ac0",
     "1657c3352ef3f280223ee429c4202461f1864867722a90e657a1d078c3540861",
     "16a7149616c827ad0df019b78aa34efa866709400db4e211d8ec15ac982e7901",
@@ -1340,19 +1342,40 @@
     "ffb579872bfa0d7b4c66fe1e97dbd4a175af653910cfda04016278b40d61ab90"
   ],
   "priority": [],
-  "failures": {
-    "0a4ddf31fe54c68dffe7c8e0f56623d884d4992e6dd5fcc0ce479e559170ee5a": {
-      "attempts": 2,
-      "quarantined": false,
-      "retry_after": "2026-11-24T13:39:32+00:00"
-    },
-    "154fc3724efe277130a9e9aea99b9c96f2ecc9ee27b4b9acea259bcc2e099b3f": {
-      "attempts": 2,
-      "quarantined": false,
-      "retry_after": "2026-11-24T13:39:32+00:00"
-    }
-  },
+  "failures": {},
   "review_issues": {
+    "0a4ddf31fe54c68dffe7c8e0f56623d884d4992e6dd5fcc0ce479e559170ee5a": [
+      {
+        "cache_key": "7653b17f6443df9f8a148d157b334970370df650bde552b97255d5ff26550fbc",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "247407cd6f73852f9d1966349b9a7059fc2191efc63b4b694b653f94260defc7",
+        "reason": "Technical assertion, condition, or step order changed"
+      }
+    ],
+    "154fc3724efe277130a9e9aea99b9c96f2ecc9ee27b4b9acea259bcc2e099b3f": [
+      {
+        "cache_key": "3945b4139ca21bc77c37531f44abe395a28b58cccb3c47980dbca444ae957e6b",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "69ac87037350003f4e02dd9f9e64ed17349ec7a569b7c99d1fd63b0f64c219ac",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "c84d589ede32002e5b3af44a5de46be5729ba276ee9b5e67759d3b85ba22881f",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "13d77f693d0d61b175ec562bae196285645a450e13ead068a3398cfa575c6479",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "37783e0a73b35a1dbe0e28033d56ba97131447869e6275600fb41d24b029ce9f",
+        "reason": "Technical assertion, condition, or step order changed"
+      }
+    ],
     "2fd0b46eb682738f5e45ce98a533aa130bbb2b57a87efc56f370a90a74c3294a": [
       {
         "cache_key": "491ce6d5809626b511f8c48a5a6c1a080a2b6c08822e4de41f4b4a1832782e10",
@@ -1701,13 +1724,13 @@
     ]
   },
   "eligible": 445,
-  "processed": 443,
-  "pending": 2,
+  "processed": 445,
+  "pending": 0,
   "priority_pending": 0,
-  "backfill_pending": 2,
+  "backfill_pending": 0,
   "rejected": 0,
   "deferred": 0,
-  "backfill_complete": false,
-  "retry_after": "2026-11-24T13:39:32+00:00",
-  "stopped_reason": "limit"
+  "backfill_complete": true,
+  "retry_after": null,
+  "stopped_reason": "complete"
 }
