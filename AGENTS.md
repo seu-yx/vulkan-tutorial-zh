@@ -74,8 +74,6 @@ Google 续译默认单并发，文本块上限 500，时间预算约 10 分钟�
 
 Google 构建完成后，自动校订优先处理新增或变更的章节，其余时间继续处理存量。每次请求只校订一整篇，几篇之间串行处理。每轮最多 5 篇，手动运行可设 `polish_limit` 为 1–10 篇，仍受时间预算约束。仓库 Actions 变量 `POLISH_ENABLED=false` 可暂停新请求。
 
-需要集中处理存量时，在 `main` 运行 **Start or resume the translation backlog**。加速批次基于上次发布的上游提交和已有 Google 译文，每轮串行处理最多 50 篇，校订时间预算为 40 分钟。每轮通过检查后保存进度并发布，有新完成章节且仍有待处理工作时自动接续。冷却或连续一轮无进展时停止接续，查阅进度状态后可再次启动。加速工作与每日同步共用一个队列。[启动工作流](.github/workflows/polish-backfill.yml)
-
 Copilot 按章节顺序对照英文和当前译文，只修明显不通顺或不准确的局部。返回的改动仍按文本块校验，保护术语、代码、链接、数字和关键条件。校验失败的改动保留原译。额度、权限或服务错误会暂停推理，已有有效校订仍可随站点发布。使用 GitHub 提供的 `GITHUB_TOKEN` 和 `copilot-requests: write`。个人仓库按所有者的 Copilot 额度计量，超额用量由账户预算控制。[GitHub 预算说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
 
 - `translations/polish.json` 保存有效校订和已确认无需改动的结果。原文、基础译文或受保护内容变化时，对应旧记录自动失效。
