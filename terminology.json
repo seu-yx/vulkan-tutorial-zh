@@ -14,7 +14,8 @@
       ],
       "variants": [
         "physical devices"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "logical device",
@@ -24,17 +25,21 @@
       ],
       "variants": [
         "logical devices"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "queue family",
       "chinese": "队列族",
       "aliases": [
-        "队列族"
+        "队列族",
+        "队列家族",
+        "队列系列"
       ],
       "variants": [
         "queue families"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "graphics pipeline",
@@ -75,11 +80,14 @@
       "chinese": "管线屏障",
       "aliases": [
         "管线屏障",
-        "管道屏障"
+        "管道屏障",
+        "管线障碍",
+        "管道障碍"
       ],
       "variants": [
         "pipeline barriers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "command buffer",
@@ -89,7 +97,8 @@
       ],
       "variants": [
         "command buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "command pool",
@@ -109,7 +118,8 @@
       ],
       "variants": [
         "descriptor set layouts"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "descriptor set",
@@ -136,11 +146,14 @@
       "chinese": "推送常量",
       "aliases": [
         "推送常量",
-        "推常量"
+        "推常量",
+        "推送常数",
+        "推常数"
       ],
       "variants": [
         "push constants"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "uniform buffer",
@@ -151,7 +164,8 @@
       ],
       "variants": [
         "uniform buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "vertex buffer",
@@ -161,7 +175,8 @@
       ],
       "variants": [
         "vertex buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "index buffer",
@@ -171,7 +186,8 @@
       ],
       "variants": [
         "index buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "staging buffer",
@@ -181,27 +197,22 @@
       ],
       "variants": [
         "staging buffers"
-      ]
-    },
-    {
-      "english": "swap chain",
-      "chinese": "交换链",
-      "aliases": [
-        "交换链"
       ],
-      "variants": [
-        "swap chains"
-      ]
+      "normalize": true
     },
     {
       "english": "swapchain",
       "chinese": "交换链",
       "aliases": [
-        "交换链"
+        "交换链",
+        "互换链"
       ],
       "variants": [
-        "swapchains"
-      ]
+        "swapchains",
+        "swap chain",
+        "swap chains"
+      ],
+      "normalize": true
     },
     {
       "english": "image view",
@@ -221,7 +232,8 @@
       ],
       "variants": [
         "render passes"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "framebuffer",
@@ -256,7 +268,8 @@
       ],
       "variants": [
         "binary semaphores"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "semaphore",
@@ -266,7 +279,8 @@
       ],
       "variants": [
         "semaphores"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "fence",
@@ -277,7 +291,16 @@
       ],
       "variants": [
         "fences"
-      ]
+      ],
+      "normalize": true,
+      "context": {
+        "excludeAny": [
+          "wrought-iron fence",
+          "chain-link fence",
+          "chain-link fences",
+          "fence mesh"
+        ]
+      }
     },
     {
       "english": "dynamic rendering",
@@ -311,7 +334,8 @@
       ],
       "variants": [
         "acceleration structures"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "shader",
@@ -321,7 +345,8 @@
       ],
       "variants": [
         "shaders"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "sampler",
@@ -341,7 +366,8 @@
       ],
       "variants": [
         "textures"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "mipmap",
@@ -486,7 +512,8 @@
       ],
       "variants": [
         "memory barriers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "device memory",
@@ -510,17 +537,19 @@
       ],
       "variants": [
         "shader modules"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "fragment shader",
-      "chinese": "片段着色器",
+      "chinese": "片元着色器",
       "aliases": [
         "片段着色器"
       ],
       "variants": [
         "fragment shaders"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "vertex shader",
@@ -530,7 +559,8 @@
       ],
       "variants": [
         "vertex shaders"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "compute shader",
@@ -540,14 +570,16 @@
       ],
       "variants": [
         "compute shaders"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "rendering",
       "chinese": "渲染",
       "aliases": [
         "渲染"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "buffer",
@@ -583,14 +615,45 @@
       ],
       "variants": [
         "pipelines"
-      ]
+      ],
+      "normalize": true,
+      "context": {
+        "requireAny": [
+          "GPU",
+          "Vulkan",
+          "graphics",
+          "render",
+          "rendering",
+          "draw",
+          "shader",
+          "shaders",
+          "rasterization",
+          "compute"
+        ],
+        "excludeAny": [
+          "CI",
+          "CI/CD",
+          "continuous integration",
+          "compiler",
+          "training",
+          "production pipeline",
+          "production pipelines",
+          "asset processing",
+          "build pipeline",
+          "build pipelines",
+          "deployment",
+          "data processing"
+        ]
+      }
     },
     {
       "english": "inference",
       "chinese": "推理",
       "aliases": [
-        "推理"
-      ]
+        "推理",
+        "推论"
+      ],
+      "normalize": true
     },
     {
       "english": "vertex",
@@ -600,7 +663,8 @@
       ],
       "variants": [
         "vertices"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "descriptor",
@@ -611,7 +675,8 @@
       ],
       "variants": [
         "descriptors"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "queue",
@@ -621,7 +686,8 @@
       ],
       "variants": [
         "queues"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "surface",
@@ -680,7 +746,8 @@
       "chinese": "量化",
       "aliases": [
         "量化"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "tensor",
@@ -690,14 +757,16 @@
       ],
       "variants": [
         "tensors"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "subgroup",
       "chinese": "子组",
       "aliases": [
         "子组",
-        "子群"
+        "子群",
+        "子集团"
       ],
       "variants": [
         "subgroups",
@@ -726,14 +795,16 @@
       ],
       "variants": [
         "scene graphs"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "shared memory",
       "chinese": "共享内存",
       "aliases": [
         "共享内存"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "instance",
@@ -769,7 +840,8 @@
       ],
       "variants": [
         "neural networks"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "workgroup",
@@ -781,7 +853,8 @@
         "work group",
         "workgroups",
         "work groups"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "attachment",
@@ -814,8 +887,7 @@
       "aliases": [
         "演示",
         "呈现",
-        "展示",
-        "表示"
+        "展示"
       ],
       "normalize": true,
       "context": {
@@ -844,11 +916,14 @@
       "chinese": "光线查询",
       "aliases": [
         "射线查询",
-        "光线查询"
+        "光线查询",
+        "Ray 查询",
+        "Ray查询"
       ],
       "variants": [
         "ray queries"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "depth buffer",
@@ -869,7 +944,8 @@
       ],
       "variants": [
         "texture coordinates"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "bindless",
@@ -889,7 +965,8 @@
       ],
       "variants": [
         "rasterizers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "signaled",
@@ -908,7 +985,8 @@
       "chinese": "描述符索引",
       "aliases": [
         "描述符索引"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "physically based rendering",
@@ -937,7 +1015,8 @@
       ],
       "variants": [
         "subpasses"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "cooperative matrix",
@@ -948,7 +1027,8 @@
       ],
       "variants": [
         "cooperative matrices"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "storage buffer",
@@ -958,7 +1038,8 @@
       ],
       "variants": [
         "storage buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "image layout",
@@ -969,7 +1050,8 @@
       ],
       "variants": [
         "image layouts"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "primitive",
@@ -981,7 +1063,25 @@
       ],
       "variants": [
         "primitives"
-      ]
+      ],
+      "context": {
+        "requireAny": [
+          "mesh",
+          "meshes",
+          "triangle",
+          "triangles",
+          "geometry",
+          "geometric",
+          "rasterizer",
+          "rasterization",
+          "vertex",
+          "vertices",
+          "topology",
+          "glTF",
+          "draw",
+          "drawing"
+        ]
+      }
     },
     {
       "english": "buffer device address",
@@ -992,7 +1092,8 @@
       ],
       "variants": [
         "buffer device addresses"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "mip level",
@@ -1001,7 +1102,8 @@
         "Mip级别",
         "mip级别",
         "Mip 级别",
-        "多级渐远级别"
+        "多级渐远级别",
+        "mip 层级"
       ],
       "variants": [
         "mip levels"
@@ -1015,8 +1117,11 @@
         "交换链映像"
       ],
       "variants": [
-        "swapchain images"
-      ]
+        "swapchain images",
+        "swap chain image",
+        "swap chain images"
+      ],
+      "normalize": true
     },
     {
       "english": "pipeline state",
@@ -1027,7 +1132,8 @@
       ],
       "variants": [
         "pipeline states"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "skeletal animation",
@@ -1045,7 +1151,8 @@
       ],
       "variants": [
         "layout transitions"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "frames in flight",
@@ -1063,7 +1170,8 @@
       "aliases": [
         "延迟锁存",
         "后期锁存"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "reprojection",
@@ -1071,7 +1179,8 @@
       "aliases": [
         "重新投影",
         "重投影"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "pipeline stage",
@@ -1082,7 +1191,8 @@
       ],
       "variants": [
         "pipeline stages"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "memory model",
@@ -1118,7 +1228,8 @@
       "aliases": [
         "计算调度",
         "计算分派"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "window surface",
@@ -1150,7 +1261,8 @@
       ],
       "variants": [
         "shader invocations"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "occlusion culling",
@@ -1166,7 +1278,8 @@
       "aliases": [
         "中央凹渲染",
         "注视点渲染"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "storage image",
@@ -1177,7 +1290,8 @@
       ],
       "variants": [
         "storage images"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "execution dependency",
@@ -1195,8 +1309,10 @@
       "chinese": "逆运动学",
       "aliases": [
         "逆运动学",
-        "反向运动学"
-      ]
+        "反向运动学",
+        "逆向运动学"
+      ],
+      "normalize": true
     },
     {
       "english": "color space",
@@ -1236,7 +1352,8 @@
       "aliases": [
         "间接调度",
         "间接分派"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "bounding box",
@@ -1255,7 +1372,8 @@
       "aliases": [
         "队列族所有权",
         "队列家族所有权"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "memory mapping",
@@ -1281,7 +1399,8 @@
       "aliases": [
         "视锥体剔除",
         "视锥剔除"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "alpha blending",
@@ -1304,11 +1423,15 @@
       "english": "stage mask",
       "chinese": "阶段掩码",
       "aliases": [
-        "阶段掩码"
+        "阶段掩码",
+        "舞台掩模",
+        "舞台蒙版",
+        "阶段掩模"
       ],
       "variants": [
         "stage masks"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "unsignaled",
@@ -1348,7 +1471,8 @@
       ],
       "variants": [
         "stencil buffers"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "pipeline cache",
@@ -1359,7 +1483,8 @@
       ],
       "variants": [
         "pipeline caches"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "shader stage",
@@ -1369,7 +1494,8 @@
       ],
       "variants": [
         "shader stages"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "read-after-write",
@@ -1394,7 +1520,8 @@
       "aliases": [
         "样本数",
         "采样数"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "texel",
@@ -1405,7 +1532,8 @@
       ],
       "variants": [
         "texels"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "host visible",
@@ -1469,7 +1597,8 @@
       "chinese": "呈现队列",
       "aliases": [
         "演示队列",
-        "呈现队列"
+        "呈现队列",
+        "表示队列"
       ],
       "normalize": true,
       "variants": [
@@ -1481,11 +1610,14 @@
       "chinese": "特化常量",
       "aliases": [
         "特化常量",
-        "专用常量"
+        "专用常量",
+        "专门化常量",
+        "专业化常量"
       ],
       "variants": [
         "specialization constants"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "anisotropic filtering",
@@ -1520,7 +1652,8 @@
       "chinese": "底层加速结构",
       "aliases": [
         "底层加速结构"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "present mode",
@@ -1560,6 +1693,10 @@
       "aliases": [
         "背面剔除",
         "背面淘汰"
+      ],
+      "variants": [
+        "backface culling",
+        "back face culling"
       ]
     },
     {
@@ -1588,7 +1725,8 @@
       "chinese": "顶层加速结构",
       "aliases": [
         "顶层加速结构"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "ray generation",
@@ -1663,7 +1801,8 @@
       ],
       "variants": [
         "any-hit"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "bounding volume hierarchy",
@@ -1671,15 +1810,18 @@
       "aliases": [
         "包围体层次结构",
         "边界体积层次结构"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "primitive topology",
       "chinese": "图元拓扑",
       "aliases": [
         "原始拓扑",
-        "图元拓扑"
-      ]
+        "图元拓扑",
+        "基元拓扑"
+      ],
+      "normalize": true
     },
     {
       "english": "closest hit",
@@ -1834,6 +1976,269 @@
           "spatial"
         ]
       }
+    },
+    {
+      "english": "synchronization primitive",
+      "chinese": "同步原语",
+      "aliases": [
+        "同步基元",
+        "同步图元"
+      ],
+      "variants": [
+        "synchronization primitives"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "rendering pipeline",
+      "chinese": "渲染管线",
+      "aliases": [
+        "渲染管道",
+        "渲染流水线"
+      ],
+      "variants": [
+        "rendering pipelines",
+        "render pipeline",
+        "render pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "CI/CD pipeline",
+      "chinese": "CI/CD 流水线",
+      "aliases": [
+        "CI/CD 管道",
+        "CI/CD管道",
+        "CI/CD管线",
+        "CI/CD 管线",
+        "持续集成和持续部署管道",
+        "持续集成和持续部署流水线"
+      ],
+      "variants": [
+        "CI/CD pipelines",
+        "continuous integration and continuous deployment pipeline",
+        "continuous integration and continuous deployment pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "asset pipeline",
+      "chinese": "资产处理流程",
+      "aliases": [
+        "资产管道",
+        "资产管线"
+      ],
+      "variants": [
+        "asset pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "inference pipeline",
+      "chinese": "推理流程",
+      "aliases": [
+        "推理管道",
+        "推理管线"
+      ],
+      "variants": [
+        "inference pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "transfer queue",
+      "chinese": "传输队列",
+      "variants": [
+        "transfer queues"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "compute queue",
+      "chinese": "计算队列",
+      "variants": [
+        "compute queues"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "image memory barrier",
+      "chinese": "图像内存屏障",
+      "aliases": [
+        "图像存储器屏障",
+        "image 内存屏障"
+      ],
+      "variants": [
+        "image memory barriers"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "pipeline bubble",
+      "chinese": "管线气泡",
+      "aliases": [
+        "管道泡沫",
+        "管线泡沫",
+        "流水线气泡"
+      ],
+      "variants": [
+        "pipeline bubbles"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "pipeline stall",
+      "chinese": "管线停顿",
+      "aliases": [
+        "管道停顿",
+        "流水线停顿"
+      ],
+      "variants": [
+        "pipeline stalls"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "fragment density",
+      "chinese": "片元密度",
+      "aliases": [
+        "碎片密度",
+        "片段密度"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "forward rendering",
+      "chinese": "前向渲染",
+      "aliases": [
+        "正向渲染",
+        "转发渲染"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "deferred rendering",
+      "chinese": "延迟渲染",
+      "normalize": true
+    },
+    {
+      "english": "Slang",
+      "chinese": "Slang",
+      "aliases": [
+        "俚语"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "buffer memory barrier",
+      "chinese": "缓冲区内存屏障",
+      "aliases": [
+        "buffer 内存屏障",
+        "缓冲内存屏障"
+      ],
+      "variants": [
+        "buffer memory barriers"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "transfer queue family",
+      "chinese": "传输队列族",
+      "aliases": [
+        "传输队列系列"
+      ],
+      "variants": [
+        "transfer queue families"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "graphics queue family",
+      "chinese": "图形队列族",
+      "aliases": [
+        "图形队列系列"
+      ],
+      "variants": [
+        "graphics queue families"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "presentation queue family",
+      "chinese": "呈现队列族",
+      "aliases": [
+        "表示队列族",
+        "演示队列族",
+        "表示队列系列"
+      ],
+      "variants": [
+        "presentation queue families"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "CI pipeline",
+      "chinese": "CI 流水线",
+      "aliases": [
+        "CI 管道",
+        "CI管道",
+        "CI管线",
+        "CI 管线"
+      ],
+      "variants": [
+        "CI pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "build pipeline",
+      "chinese": "构建流水线",
+      "aliases": [
+        "构建管道",
+        "构建管线"
+      ],
+      "variants": [
+        "build pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "deployment pipeline",
+      "chinese": "部署流水线",
+      "aliases": [
+        "部署管道",
+        "部署管线"
+      ],
+      "variants": [
+        "deployment pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "training pipeline",
+      "chinese": "训练流程",
+      "aliases": [
+        "训练管道",
+        "训练管线",
+        "训练流水线"
+      ],
+      "variants": [
+        "training pipelines"
+      ],
+      "normalize": true
+    },
+    {
+      "english": "clspv pipeline",
+      "chinese": "clspv 编译流程",
+      "aliases": [
+        "clspv 管道",
+        "clspv管道",
+        "clspv 管线"
+      ],
+      "variants": [
+        "clspv pipelines"
+      ],
+      "normalize": true
     }
   ]
 }

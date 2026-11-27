@@ -89,6 +89,13 @@ class MirrorTests(unittest.TestCase):
         entry = sync.navigation_metadata([{"id": "removed", "title": "Topic", "depth": 1}], set(), {}, "glossary")[0]
         self.assertEqual(entry, {"title": "Topic", "depth": 1})
 
+    def test_navigation_uses_reviewed_titles_before_seed_and_google(self):
+        cases = [("Base Code", "代码基础"), ("DirectML", "DirectML"), ("Source & Target", "源与目标")]
+        entries = [{"title": english, "depth": 1} for english, chinese in cases]
+        reviewed = {sync.translation_key(en, {}, "g"): zh for en, zh in cases}
+        navigation = sync.navigation_metadata(entries, set(), {key: "旧译" for key in reviewed}, "g", reviewed=reviewed)
+        self.assertEqual([node["titleZh"] for node in navigation], [zh for en, zh in cases])
+
     def test_local_chapter_link_preserves_anchor(self):
         result = sync.route_link("01_Instance.html#creation", "03/00_Base", {"03/01_Instance"})
         self.assertEqual(result, "/?page=03%2F01_Instance#creation")
@@ -170,6 +177,26 @@ class MirrorTests(unittest.TestCase):
         self.assertEqual([len(batch) for batch in batches], [9, 9, 7])
         small_items = [(str(index), {"text": "short"}) for index in range(35)]
         self.assertEqual([len(batch) for batch in sync.translation_batches(small_items)], [32, 3])
+
+    def test_cached_inline_marker_artifacts_leave_source_identifiers_and_links_intact(self):
+        en = BeautifulSoup('<h3><a class="anchor" href="#_x"></a>Use <strong>VK_KHR_display</strong></h3>', 'html.parser').h3
+        zh = BeautifulSoup('<a class="anchor" href="#_x"></a>_使用 <strong>_VK_KHR_display_</strong>', 'html.parser')
+        sync.clean_marker_underscores(en, zh)
+        self.assertEqual(zh.get_text(), '使用 VK_KHR_display')
+        self.assertEqual(zh.a['href'], '#_x')
+        en = BeautifulSoup('<p>Set <strong>_DEBUG</strong>.</p>', 'html.parser').p
+        zh = BeautifulSoup('设置 <strong>_DEBUG</strong>。', 'html.parser')
+        sync.clean_marker_underscores(en, zh)
+        self.assertEqual(zh.strong.string, '_DEBUG')
+
+    def test_admonition_title_is_translated_only_once(self):
+        soup = BeautifulSoup('<table><tr><td><div class="title">Note</div></td>'
+                             '<td><p>Wait for the fence.</p></td></tr></table>', 'html.parser')
+        blocks = sync.translation_blocks(soup)
+        self.assertEqual([block.name for block in blocks], ['div', 'p'])
+        for block in blocks:
+            sync.wrap_bilingual_pair(soup, block)
+        self.assertFalse(soup.select('.vt-pair .vt-pair'))
 
     def test_table_cell_remains_visible_in_chinese(self):
         soup = BeautifulSoup('<table><tr><td>English text</td><th>Heading</th></tr></table><dl><dt>Definition</dt></dl>', "html.parser")

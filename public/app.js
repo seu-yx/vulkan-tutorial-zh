@@ -77,7 +77,7 @@
     'Late Latching': 'Late Latching 延迟锁存', 'Action Spaces and Input': '动作空间与输入',
     'Slang for Spatial Shaders': '使用 Slang 编写空间着色器', 'Quad-Views and Foveated Rendering': '四视图与注视点渲染',
     'Variable Rate Shading': '可变速率着色', 'Canted Displays': '倾斜式显示器', 'CAVE Architecture': 'CAVE 架构',
-    'Warp and Blend': '图像变形与融合', 'LightField Theory': '光场理论', 'Plenoptic Synthesis': '全光合成',
+    'Warp and Blend': '图像变形与融合', 'LightField Theory': '光场理论', 'Plenoptic Synthesis': '光场视图合成',
     'Scene Understanding': '场景理解', 'ML Inference for Spatial Data': '空间数据的机器学习推理',
     'Semantic Occlusion': '语义遮挡', 'Platform Divergence': '平台差异', 'Spatial Diagnostics': '空间诊断'
   });
@@ -208,15 +208,50 @@
     if (state.catalog) renderNavigation();
     if (state.page) { updatePageHeading(); buildToc(); updatePageLinks(); }
   }
-  function applyTerms() {
-    $$('#article-content .vt-zh .vt-term, #article-title .vt-term').forEach(term => {
-      if (!term.dataset.originalZh) term.dataset.originalZh = term.textContent;
-      const english = term.dataset.term || term.dataset.english || term.title;
-      if (english) term.textContent = state.terms ? english : term.dataset.originalZh;
-      term.tabIndex = 0;
-      if (english) { term.title = english; term.setAttribute('aria-label', `${term.textContent}（${english}）`); }
-    });
-    if (state.page) buildToc();
+  function trimTermSpacing(term) {
+    // MT can pad protected placeholders with ASCII spaces. Only trim a space
+    // when both sides are Chinese prose in the same inline context.
+    const before = term.previousSibling;
+    const after = term.nextSibling;
+    if (/^\p{Script=Han}/u.test(term.textContent) && before?.nodeType === Node.TEXT_NODE) {
+      before.data = before.data.replace(/([\p{Script=Han}，。！？；：、（）《》“”‘’]) +$/u, '$1');
+    }
+    if (/\p{Script=Han}$/u.test(term.textContent) && after?.nodeType === Node.TEXT_NODE) {
+      after.data = after.data.replace(/^ +(?=[\p{Script=Han}，。！？；：、（）《》“”‘’])/u, '');
+    }
+  }
+  function prepareTerms(content) {
+    const seen = new Set();
+    for (const term of $$('.vt-zh .vt-term', content)) {
+      // The reader already pairs headings with English titles. Keep navigation,
+      // protected markup and the original article text free of inline glosses.
+      if (term.closest('code, pre, kbd, samp, math, .duplicate-title, [hidden]')) continue;
+      trimTermSpacing(term);
+      if (term.closest('h1, h2, h3, h4, h5, h6')) continue;
+      const english = (term.dataset.term || term.dataset.english || term.title || '').trim();
+      const key = english.toLowerCase().replace(/\s+/g, ' ');
+      if (!key || seen.has(key) || term.textContent.trim().toLowerCase() === key) continue;
+      seen.add(key);
+      // Some translations already give the English in parentheses.
+      const following = term.nextSibling?.textContent || '';
+      const existing = /^\s*[（(]\s*([^（）()]+?)\s*[）)]/.exec(following);
+      if (existing && existing[1].toLowerCase() === key) continue;
+      const gloss = document.createElement('span');
+      gloss.className = 'vt-term-original';
+      gloss.lang = 'en';
+      gloss.textContent = `（${english}）`;
+      term.append(gloss);
+      term.classList.add('vt-term-first');
+      term.title = english;
+      if (!term.closest('a')) term.tabIndex = 0;
+    }
+    const hasGlosses = !!$('.vt-term-first', content);
+    $('.term-setting').hidden = !hasGlosses;
+    $('.toc-tip').hidden = !hasGlosses;
+  }
+  function showInlineTerms(enabled) {
+    state.terms = enabled;
+    document.documentElement.toggleAttribute('data-inline-terms', enabled);
   }
   function renderNavigation() {
     const nav = $('#chapter-nav'); let scrollTop = nav.scrollTop; nav.replaceChildren();
@@ -273,9 +308,10 @@
     const wordCount = englishText ? englishText.split(/\s+/).length : $('#article-content').textContent.split(/\s+/).length;
     $('#reading-time').textContent = `约 ${Math.max(1, Math.ceil(wordCount / 220))} 分钟阅读`;
     const translated = Number(page.translated ?? page.stats?.translated ?? 0), total = Number(page.total ?? page.stats?.total ?? 0);
-    const translationStatus = total ? `Google 翻译 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : 'Google 翻译 · 可随时对照原文';
-    const polished = Number(page.stats?.polished ?? 0);
-    $('#translation-status').textContent = polished > 0 ? `${translationStatus} · ${polished} 段已校订` : translationStatus;
+    const translationStatus = total ? `中文译文 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : '中文译文 · 可随时对照原文';
+    const reviewed = $$('.vt-zh[data-vt-reviewed="true"]', $('#article-content')).length;
+    const edited = reviewed + Number(page.stats?.polished ?? 0);
+    $('#translation-status').textContent = edited ? `${translationStatus} · ${edited} 段已校订` : translationStatus;
     const pending = total > translated;
     const notice = $('#notice'); notice.hidden = !pending;
     if (pending) notice.textContent = '本章翻译正在补全，尚未翻译的段落保留英文。你可以随时切换到英文或中英对照阅读。';
@@ -286,7 +322,6 @@
     $('#page-license').textContent = license ? `本章许可：${license}` : '';
     $('#page-copyright').hidden = !copyright.length;
     $('#page-copyright').textContent = copyright.join('\n');
-    applyTerms();
   }
   function buildToc() {
     if (observer) observer.disconnect();
@@ -363,7 +398,7 @@
     });
     $$('a', content).forEach(link => { if (/^https?:\/\//.test(link.href) && new URL(link.href).origin !== location.origin) { link.target = '_blank'; link.rel = 'noopener noreferrer'; } });
     $$('img', content).forEach(image => { image.loading = 'lazy'; image.decoding = 'async'; });
-    applyTerms();
+    prepareTerms(content);
   }
   async function loadPage(id, options = {}) {
     const token = ++state.request;
@@ -384,6 +419,7 @@
     } catch (error) { if (token === state.request) showError('章节暂时无法加载', '请检查网络后重试，或通过上方链接阅读官方原文。', () => loadPage(id, options)); }
   }
   function showError(title, message, retry) {
+    $('.term-setting').hidden = true; $('.toc-tip').hidden = true;
     const content = $('#article-content'); content.replaceChildren(); content.classList.remove('is-loading'); content.setAttribute('aria-busy', 'false'); $('#article-title').textContent = title; $('#notice').hidden = true;
     const section = document.createElement('div'); section.className = 'error-state'; const p = document.createElement('p'); p.textContent = message; section.append(p);
     if (retry) { const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = '重新加载'; button.addEventListener('click', retry); section.append(button); }
@@ -396,10 +432,10 @@
     $('#about-translation').textContent = translation.total ? `${Number(translation.translated || 0).toLocaleString()} / ${Number(translation.total).toLocaleString()} 段落` : '翻译进度尚未记录';
   }
   async function init() {
-    setMode(state.mode); setSidebarCollapsed(state.sidebarCollapsed, false); setMenu(false); $('#english-terms').checked = state.terms;
+    showInlineTerms(state.terms); setMode(state.mode); setSidebarCollapsed(state.sidebarCollapsed, false); setMenu(false); $('#english-terms').checked = state.terms;
     window.addEventListener('resize', () => { if (!matchMedia('(max-width: 999px)').matches && document.body.classList.contains('menu-open')) setMenu(false); else syncSidebarAccess(); if (!matchMedia('(max-width: 1100px)').matches) setSearchOpen(false); else if ($('#header-search')?.contains(document.activeElement)) setSearchOpen(true); });
     $$('.mode-button').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
-    $('#english-terms').addEventListener('change', event => { state.terms = event.target.checked; storage.set('vt-terms', String(state.terms)); applyTerms(); });
+    $('#english-terms').addEventListener('change', event => { showInlineTerms(event.target.checked); storage.set('vt-terms', String(state.terms)); });
     $('#theme-toggle').addEventListener('click', () => { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; storage.set('vt-theme', theme); $('#theme-toggle').setAttribute('aria-label', `切换${theme === 'dark' ? '浅色' : '深色'}模式`); });
     $('#chapter-search').addEventListener('input', event => { state.query = event.target.value; if (state.catalog) renderNavigation(); if (state.query.trim()) revealSidebar(); });
     $('#search-toggle')?.addEventListener('click', () => { const open = !document.body.classList.contains('search-open'); setSearchOpen(open, open); });

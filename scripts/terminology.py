@@ -13,8 +13,10 @@ from bs4 import BeautifulSoup, Comment, NavigableString
 
 
 SKIP_TAGS = {"pre", "code", "kbd", "samp", "math", "script", "style", "svg"}
-API_RE = re.compile(r"\b(?:vk::[\w:]+|vk[A-Z]\w+|VK_[A-Z0-9_]+)\b")
-ADDRESS_RE = re.compile(r"(?:\b[a-z][a-z0-9+.-]*://|\bwww\.|\bmailto:)[^\s<>\"]+|\b[\w.+-]+@(?:[\w-]+\.)+[a-z]{2,}\b", re.I)
+API_RE = re.compile(
+    r"(?<![A-Za-z0-9_])(?:[A-Za-z_]\w*(?:::[A-Za-z_]\w*)+|vk[A-Z]\w+|VK_[A-Z0-9_]+"
+    r"|[\w.-]+\.(?:spv|slang|vert|frag|comp|glsl|hlsl|cpp|hpp))\b", re.ASCII)
+ADDRESS_RE = re.compile(r"(?:\b[a-z][a-z0-9+.-]*://|\bwww\.|\bmailto:)[^\s<>\"]+|\b[\w.+-]+@(?:[\w-]+\.)+[a-z]{2,}\b", re.I | re.ASCII)
 CJK_RE = re.compile(r"[\u3400-\u9fff]")
 
 
@@ -49,7 +51,9 @@ def _target_literal_pattern(value):
         chunks.append(r"\s+" if character.isspace() else re.escape(character))
     pattern = "".join(chunks)
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 -]*", value):
-        return r"(?<![A-Za-z0-9_])_*" + pattern + r"_*(?![A-Za-z0-9_])"
+        # Whole emphasized terms are useful aliases. A lone underscore can
+        # belong to a longer label such as "_Buffer Viewer_" or an identifier.
+        return r"(?<![A-Za-z0-9_])(?:_" + pattern + r"_|" + pattern + r")(?![A-Za-z0-9_])"
     if value and re.match(r"[A-Za-z0-9_]", value[0]):
         pattern = r"(?<![A-Za-z0-9_])" + pattern
     if value and re.match(r"[A-Za-z0-9_]", value[-1]):
@@ -70,13 +74,38 @@ def _simple_term(node):
     )
 
 
+def _address_label(link):
+    href = link.get("href", "")
+    if not href.startswith(("https://", "http://", "mailto:")):
+        return False
+    return link.get_text() in (href, re.sub(r"^(?:https?://|mailto:)", "", href))
+
+
+def _restore_address_labels(english, chinese):
+    # The v5 Google cache may protect "shader" even inside a bare link's
+    # visible URL. Only restore a label reconstructed exactly from the source.
+    originals = {(a["href"], a.get_text()) for a in english.find_all("a", href=True) if _address_label(a)}
+    if not originals:
+        return
+    for link in chinese.find_all("a", href=True):
+        if any(not _simple_term(tag) or not tag.has_attr("data-term") for tag in link.find_all(True)):
+            continue
+        label = "".join(str(child) if isinstance(child, NavigableString) else child["data-term"]
+                        for child in link.children)
+        for candidate in (label, label.removeprefix("_").removesuffix("_")):
+            if (link["href"], candidate) in originals and (link.find() or link.get_text() != candidate):
+                link.string = candidate
+                break
+
+
 def _plain_prose(block):
     """Read inline prose across emphasis/links, excluding code and non-prose nodes."""
     if isinstance(block, str):
         block = BeautifulSoup(block, "html.parser")
     parts = []
     for node in block.find_all(string=True):
-        if isinstance(node, Comment) or any(parent.name in SKIP_TAGS for parent in node.parents):
+        if isinstance(node, Comment) or any(parent.name in SKIP_TAGS or parent.name == "a" and _address_label(parent) for parent in node.parents):
+            parts.append("\0")
             continue
         parts.append(str(node))
     # A nested emphasis can separate two source words without changing the phrase.
@@ -297,26 +326,42 @@ class TermAnnotator:
         return removed
 
     def annotate(self, english_block, chinese_block):
-        source = _plain_prose(english_block)
         exact_block = BeautifulSoup(english_block, "html.parser") if isinstance(english_block, str) else english_block
+        _restore_address_labels(exact_block, chinese_block)
+        source = _plain_prose(exact_block)
         exact_source = _identity(exact_block.get_text(" ", strip=True))
         source_counts = Counter()
+        excluded = set()
         for match in self.source_pattern.finditer(source):
             key = self.source_aliases[_identity(match.group())]
             term = self.terms[key]
             if term["require"] and not any(pattern.search(source) for pattern in term["require"]):
                 continue
             if any(pattern.search(source) for pattern in term["exclude"]):
+                excluded.add(key)
                 continue
             source_counts[key] += 1
         existing_counts = Counter()
+        added, normalized = Counter(), Counter()
         existing_nodes = chinese_block.select(".vt-term")
+        unwrapped = 0
         for node in existing_nodes:
             key = self.source_aliases.get(_identity(node.get("data-term") or node.get("title") or ""))
             if key:
+                if key in excluded and _simple_term(node) and not _protected(node):
+                    node.unwrap()
+                    unwrapped += 1
+                    continue
                 existing_counts[key] += 1
+                if _simple_term(node) and not _protected(node):
+                    term = self.terms[key]
+                    node["data-term"] = node["title"] = term["english"]
+                    original = node.get_text()
+                    if (source_counts[key] and term["normalize"] and original != term["chinese"]
+                            and key in self.target_aliases.get(_target_identity(original), ())):
+                        node.string = term["chinese"]
+                        normalized[key] += 1
         remaining = source_counts - existing_counts
-        added, normalized = Counter(), Counter()
         factory = BeautifulSoup("", "html.parser")
         exact = {key for key in source_counts if any(exact_source == _identity(variant) for variant in self.terms[key]["variants"])}
         target_pattern = self._target_pattern(source_counts, exact)
@@ -324,7 +369,7 @@ class TermAnnotator:
         for node in list(chinese_block.find_all(string=True)):
             if isinstance(node, Comment) or not str(node).strip():
                 continue
-            if _protected(node):
+            if _protected(node) or any(parent.name == "a" and _address_label(parent) for parent in node.parents):
                 continue
             value = str(node)
             protected_ranges = [match.span() for pattern in (API_RE, ADDRESS_RE) for match in pattern.finditer(value)]
@@ -357,7 +402,7 @@ class TermAnnotator:
             for key in source_counts
         }
         return {
-            "source": sum(source_counts.values()), "existing": len(existing_nodes) - removed,
+            "source": sum(source_counts.values()), "existing": len(existing_nodes) - removed - unwrapped,
             "added": sum(added.values()), "normalized": sum(normalized.values()),
             "unmatched": sum(remaining.values()), "byTerm": by_term,
         }

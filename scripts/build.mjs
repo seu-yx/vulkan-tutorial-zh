@@ -32,11 +32,22 @@ const pages = [];
 for (const file of walk(path.join(upstream, 'en'))) {
   const id = path.relative(path.join(upstream, 'en'), file).replaceAll('\\', '/').replace(/\.adoc$/, '');
   const source = fs.readFileSync(file, 'utf8');
-  const hash = crypto.createHash('sha256').update('render-v4:' + source).digest('hex');
+  const hash = crypto.createHash('sha256').update('render-v5:' + source).digest('hex');
   const meta = navMap.get(id) || {id, title: id.split('/').at(-1).replaceAll('_', ' '), depth: 2, group: '更多专题', order: 10000};
   if (previous.get(id)?.hash === hash) { pages.push({...meta, ...previous.get(id), depth: meta.depth, group: meta.group, order: meta.order}); continue; }
   // Secure mode disables includes and remote file reads in untrusted upstream content.
   const doc = asciidoctor.load(source, {safe: 'secure', standalone: false, attributes: {showtitle: false, sectanchors: true, 'source-highlighter': 'none', 'experimental': true, 'relfilesuffix': '.html'}});
+  // In prose `name`'s can otherwise keep the code span open until the next
+  // backtick. Unconstrained AsciiDoc markup closes it before the possessive.
+  if (source.includes("`'s")) {
+    for (const paragraph of doc.findBy({context: 'paragraph'})) {
+      if (!paragraph.hasSubstitution('quotes')) continue;
+      const lines = paragraph.getSourceLines();
+      for (let i = 0; i < lines.length; i++) {
+        lines[i] = lines[i].replace(/(?<![\\`])`([A-Za-z_][\w:.-]*(?: [A-Za-z_][\w:.-]*)*)`(?='s\b)/g, '``$1``');
+      }
+    }
+  }
   const title = doc.getDocumentTitle() || meta.title;
   let html = doc.convert();
   const explicitLicense = source.match(/SPDX-License-Identifier:\s*([^\s]+)/)?.[1];
