@@ -96,6 +96,13 @@ def atomic_json(path: Path, value):
     os.replace(temporary, path)
 
 
+def annotated_title(english, chinese, terminology):
+    original = BeautifulSoup(f'<span>{html.escape(english)}</span>', "html.parser").span
+    translated = BeautifulSoup(f'<span>{html.escape(chinese)}</span>', "html.parser").span
+    terminology.annotate(original, translated)
+    return translated
+
+
 def navigation_metadata(entries, known_ids, cache, glossary_version, terminology=None, reviewed=None):
     """Preserve the official hierarchy, reusing only exact cached title translations."""
     navigation = []
@@ -112,10 +119,10 @@ def navigation_metadata(entries, known_ids, cache, glossary_version, terminology
         if translated:
             entry["titleZh"] = BeautifulSoup(translated, "html.parser").get_text()
             if terminology:
-                english = BeautifulSoup(f'<span>{html.escape(raw["title"])}</span>', "html.parser").span
-                chinese = BeautifulSoup(f'<span>{html.escape(entry["titleZh"])}</span>', "html.parser").span
-                terminology.annotate(english, chinese)
+                chinese = annotated_title(raw["title"], entry["titleZh"], terminology)
                 entry["titleZh"] = chinese.get_text()
+                if chinese.select_one(".vt-term"):
+                    entry["titleZhHtml"] = chinese.decode_contents()
         navigation.append(entry)
     return navigation
 
@@ -672,11 +679,11 @@ def sync(args):
                 page["resolved"].clear()
             document = {key: value for key, value in page.items() if key != "resolved"}
             if page.get("titleZh"):
-                original_title = BeautifulSoup(f'<span>{html.escape(page["title"])}</span>', "html.parser").span
-                chinese_title = BeautifulSoup(f'<span>{html.escape(page["titleZh"])}</span>', "html.parser").span
-                terminology.annotate(original_title, chinese_title)
+                chinese_title = annotated_title(page["title"], page["titleZh"], terminology)
                 page["titleZh"] = document["titleZh"] = chinese_title.get_text()
                 document["titleZhHtml"] = chinese_title.decode_contents()
+                if chinese_title.select_one(".vt-term"):
+                    page["titleZhHtml"] = document["titleZhHtml"]
             document["stats"] = {"translated": page["translated"], "total": page["total"]}
             atomic_json(data / "pages" / (page["id"] + ".json"), document)
         dirty.clear()

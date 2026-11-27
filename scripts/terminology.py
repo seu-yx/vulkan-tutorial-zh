@@ -37,7 +37,7 @@ def _literal_pattern(value):
 def _target_identity(value):
     # Google inserts spaces around protected Chinese words. Those spaces are not
     # part of the term, but spaces outside the match must remain untouched.
-    value = _identity(re.sub(r"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", "", value))
+    value = _identity(re.sub(r"(?<=[\u3400-\u9fff])[\s\u200b]+(?=[\u3400-\u9fff])", "", value))
     # Some cached Google prose leaves Markdown emphasis around untranslated words.
     return value.strip('_') if re.fullmatch(r"_*[A-Za-z0-9][A-Za-z0-9 _-]*", value) else value
 
@@ -47,7 +47,7 @@ def _target_literal_pattern(value):
     chunks = []
     for index, character in enumerate(value):
         if index and CJK_RE.fullmatch(character) and CJK_RE.fullmatch(value[index - 1]):
-            chunks.append(r"\s*")
+            chunks.append(r"[\s\u200b]*")
         chunks.append(r"\s+" if character.isspace() else re.escape(character))
     pattern = "".join(chunks)
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 -]*", value):
@@ -276,11 +276,23 @@ class TermAnnotator:
                     if not old_terms or any(match.start() > start or match.end() < end for start, end, _ in old_terms):
                         continue
                     key = self._target_key(match.group(), remaining, exact)
+                    # A cached label can cover only part of its own alias, e.g.
+                    # <term>帧缓冲</term>区. Reuse its source occurrence to extend it.
+                    old_key = self.source_aliases.get(_identity(old_terms[0][2].get("data-term", "")))
+                    if (key is None and len(old_terms) == 1 and source_counts[old_key]
+                            and old_key in self.target_aliases.get(_target_identity(match.group()), ())):
+                        key = old_key
                     if key is None:
                         continue
-                    # Retain a standalone existing annotation unchanged.
-                    if len(old_terms) == 1 and old_terms[0][0] == match.start() and old_terms[0][1] == match.end():
-                        continue
+                    if len(old_terms) == 1 and old_terms[0][:2] == match.span():
+                        # Replace an equally wide old hint only if the English
+                        # source supplies a longer, more specific compound.
+                        if old_key == key or old_key not in self.terms or not any(
+                            re.search(_literal_pattern(short), phrase, re.I)
+                            for short in self.terms[old_key]["variants"]
+                            for phrase in self.terms[key]["variants"]
+                        ):
+                            continue
                     span = self._term_span(factory, key, match.group())
                     accepted.append((match.start(), match.end(), span))
                     added[key] += 1
@@ -332,7 +344,16 @@ class TermAnnotator:
         exact_source = _identity(exact_block.get_text(" ", strip=True))
         source_counts = Counter()
         excluded = set()
-        for match in self.source_pattern.finditer(source):
+        # Phrases may overlap even when they start at different words. In
+        # "to transfer queue family ownership", the longer noun phrase is
+        # "queue family ownership"; "transfer" is a verb.
+        candidates = []
+        start = 0
+        while match := self.source_pattern.search(source, start):
+            candidates.append(match)
+            start = match.start() + 1
+        used_ranges = []
+        for match in sorted(candidates, key=lambda item: item.start() - item.end()):
             key = self.source_aliases[_identity(match.group())]
             term = self.terms[key]
             if term["require"] and not any(pattern.search(source) for pattern in term["require"]):
@@ -340,6 +361,9 @@ class TermAnnotator:
             if any(pattern.search(source) for pattern in term["exclude"]):
                 excluded.add(key)
                 continue
+            if any(match.start() < stop and match.end() > begin for begin, stop in used_ranges):
+                continue
+            used_ranges.append(match.span())
             source_counts[key] += 1
         existing_counts = Counter()
         added, normalized = Counter(), Counter()

@@ -85,6 +85,17 @@ class MirrorTests(unittest.TestCase):
         self.assertEqual(navigation[2]["titleZh"], "基础代码")
         self.assertNotIn("titleZh", navigation[0])
 
+    def test_navigation_exposes_only_marked_title_text_to_the_term_switch(self):
+        entries = [{"title": "Queue setup", "depth": 1}, {"title": "Overview", "depth": 2}]
+        reviewed = {sync.translation_key("Queue setup", {}, "g"): "队列设置"}
+        terms = sync.TermAnnotator([{"english": "queue", "chinese": "队列"}])
+        marked, plain = sync.navigation_metadata(entries, set(), {}, "g", terms, reviewed)
+        self.assertEqual(marked["titleZh"], "队列设置")
+        label = BeautifulSoup(marked["titleZhHtml"], "html.parser")
+        self.assertEqual(label.select_one(".vt-term")["data-term"], "queue")
+        self.assertEqual(label.get_text(), marked["titleZh"])
+        self.assertNotIn("titleZhHtml", plain)
+
     def test_missing_navigation_target_becomes_a_heading_without_a_broken_link(self):
         entry = sync.navigation_metadata([{"id": "removed", "title": "Topic", "depth": 1}], set(), {}, "glossary")[0]
         self.assertEqual(entry, {"title": "Topic", "depth": 1})

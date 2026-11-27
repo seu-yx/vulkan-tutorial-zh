@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 // Run the actual reader's pure tree helpers, without booting its DOM or network.
 const source = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
-const instrumented = source.replace(/\n  init\(\);\n\}\)\(\);\s*$/, '\n  globalThis.navigationTest = {buildNavigationTree, filterNavigationTree, prepareTerms};\n})();');
+const instrumented = source.replace(/\n  init\(\);\n\}\)\(\);\s*$/, '\n  globalThis.navigationTest = {buildNavigationTree, filterNavigationTree, renderTermBlock};\n})();');
 assert.notEqual(instrumented, source, 'Reader test hook did not match');
 const context = {document: {currentScript: {src: 'https://example.test/tutorial/app.js'}}, localStorage: {getItem: () => null}, URL};
 vm.runInNewContext(instrumented, context);
@@ -54,44 +54,54 @@ assert.equal(leaves(legacy).length, catalog.pages.length);
 assert.ok(legacy[0].children.some(node => node.title === 'triangle' && node.children.some(child => child.title === 'setup')), 'Legacy catalogs must gain real folder nesting');
 console.log('Navigation tree: hierarchy, unique reachability, search context and legacy fallback passed');
 
-// Exercise the translation DOM pass with the same attributes as generated pages.
-const term = (english, chinese, {inside, before = '', after = ''} = {}) => ({
-  dataset: {term: english}, textContent: chinese, title: english, appended: [],
-  previousSibling: {nodeType: 3, data: before}, nextSibling: {nodeType: 3, data: after, textContent: after},
-  closest(selector) { return inside && selector.split(', ').includes(inside); },
-  classList: {add() {}},
-  append(gloss) { this.appended.push(gloss); },
-});
-const settings = {}, tip = {};
-context.Node = {TEXT_NODE: 3};
-context.document.querySelector = selector => ({'.term-setting': settings, '.toc-tip': tip})[selector];
-context.document.createElement = () => ({});
-const first = term('queue family', '队列族', {before: '每个 ', after: ' 支持'});
-const repeated = term('Queue Family', '队列族');
-const heading = term('queue family', '队列族', {inside: 'h3'});
-const code = term('queue', 'VkQueue', {inside: 'code'});
-const linked = term('fence', '栅栏', {inside: 'a', before: 'GPU ', after: ' 1'});
-const explained = term('image', '图像', {after: '（image）'});
-const identical = term('GPU', 'GPU');
-const annotations = [heading, code, first, repeated, linked, explained, identical];
-const content = {
-  querySelectorAll: () => annotations,
-  querySelector: () => annotations.some(node => node.appended.length),
+// TreeWalker yields the text in reading order, including text nested inside
+// links/emphasis. The reader changes only text nodes recorded for this block.
+function marker(english, {link = false} = {}) {
+  return {
+    dataset: {term: english}, title: english,
+    closest(selector) { return selector === 'a' && link; },
+    removeAttribute(name) { delete this[name === 'tabindex' ? 'tabIndex' : name]; },
+  };
+}
+function textNode(data, term = null, {protectedText = false, link = false} = {}) {
+  return {data, parentElement: {closest(selector) {
+    if (selector === '.vt-term') return term;
+    if (selector === 'a') return link;
+    return protectedText;
+  }}};
+}
+context.NodeFilter = {SHOW_TEXT: 4};
+context.document.createTreeWalker = block => {
+  let index = 0;
+  return {nextNode: () => block.nodes[index++]};
 };
-context.navigationTest.prepareTerms(content);
-assert.deepEqual(first.appended, [{lang: 'en', className: 'vt-term-original', textContent: '（queue family）'}]);
-assert.equal(first.textContent, '队列族');
+const first = marker('queue family'), repeated = marker('queue family'), linked = marker('queue', {link: true});
+const block = {nodes: [
+  textNode('每个'), textNode('队列族', first), textNode('都包含'), textNode('队列', linked, {link: true}),
+  textNode('（queue）和'), textNode('队列族', repeated), textNode('VK_QUEUE_GRAPHICS_BIT', null, {protectedText: true}),
+  textNode('。'),
+]};
+const text = block => block.nodes.map(node => node.data).join('');
+const before = text(block);
+const render = context.navigationTest.renderTermBlock;
+assert.equal(render(block, true), 3);
+assert.equal(text(block), '每个 queue family 都包含 queue 和 queue family VK_QUEUE_GRAPHICS_BIT。');
+assert.equal(repeated.lang, 'en');
+assert.equal(first.title, '队列族');
+render(block, true);
+assert.equal(text(block), '每个 queue family 都包含 queue 和 queue family VK_QUEUE_GRAPHICS_BIT。');
+render(block, false);
+assert.equal(text(block), before, 'Turning the switch off restores the complete Chinese text, including explicit glosses');
 assert.equal(first.tabIndex, 0);
-assert.equal(first.previousSibling.data, '每个');
-assert.equal(first.nextSibling.data, '支持');
-assert.equal(linked.appended.length, 1);
-assert.equal(linked.tabIndex, undefined, 'A link provides its own focus stop');
-assert.equal(linked.previousSibling.data, 'GPU ');
-assert.equal(linked.nextSibling.data, ' 1');
-for (const node of [heading, code, repeated, explained, identical]) assert.equal(node.appended.length, 0);
-assert.equal(settings.hidden, false);
-annotations.length = 0;
-context.navigationTest.prepareTerms(content);
-assert.equal(settings.hidden, true);
-assert.equal(tip.hidden, true);
-console.log('Reader terminology: first prose mention, CJK spacing, link focus, heading/code protection and explicit glosses passed');
+assert.equal(first.title, 'queue family');
+assert.equal(linked.tabIndex, undefined, 'The existing link supplies the keyboard focus target');
+const code = marker('queue'), head = marker('swapchain');
+const section = {nodes: [textNode('配置'), textNode('交换链', head), textNode('（'), textNode('queue', code, {protectedText: true}), textNode('）')]};
+render(section, true);
+assert.equal(text(section), '配置 swapchain（queue）', 'Headings switch, while a protected identifier and its parentheses stay intact');
+assert.equal(code.lang, undefined);
+const terms = {nodes: [textNode('CUDA '), textNode('计算', marker('compute')), textNode('着色器', marker('shader')),
+                        textNode('（SSBO）与'), textNode('视口', marker('viewport')), textNode('。')]};
+render(terms, true);
+assert.equal(text(terms), 'CUDA compute shader（SSBO）与 viewport。', 'Adjacent English labels are separated once, and abbreviations survive');
+console.log('Reader terminology: every occurrence, headings, spacing, links, protected code and reversible switching passed');

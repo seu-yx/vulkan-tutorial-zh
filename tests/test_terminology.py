@@ -316,6 +316,37 @@ class TerminologyTests(unittest.TestCase):
         annotator.annotate(english, chinese)
         self.assertEqual(str(chinese), before)
 
+    def test_english_switch_uses_complete_source_grounded_compounds(self):
+        config = json.loads((Path(__file__).parents[1] / "terminology.json").read_text(encoding="utf-8"))
+        annotator = TermAnnotator(config)
+        def cached(key, label):
+            return f'<span class="vt-term" data-term="{key}" title="{key}">{label}</span>'
+        examples = [
+            ("The framebuffer is ready.", cached("framebuffer", "帧缓冲") + "区就绪。",
+             ["framebuffer"], "framebuffer就绪。"),
+            ("A scissor rectangle.", cached("scissor", "裁剪矩形") + " 矩形。",
+             ["scissor rectangle"], "scissor rectangle。"),
+            ("Use a scissor rectangle.", "使用" + cached("scissor", "裁剪矩形") + "。",
+             ["scissor rectangle"], "使用scissor rectangle。"),
+            ("Use a G-Buffer.", "使用 G " + cached("buffer", "缓冲区") + "。",
+             ["G-buffer"], "使用 G-buffer。"),
+            ("An exported file descriptor.", "导出的文件" + cached("descriptor", "描述符") + "。",
+             ["file descriptor"], "导出的file descriptor。"),
+            ("Transfer queue family ownership.", "转移" + cached("queue family", "队列族") + "所有权。",
+             ["queue family ownership"], "转移queue family ownership。"),
+        ]
+        for en, zh, terms, retained in examples:
+            with self.subTest(source=en):
+                _, english, chinese = self.pair(en, zh)
+                annotator.annotate(english, chinese)
+                self.assertEqual([node["data-term"] for node in chinese.select(".vt-term")], terms)
+                markup = str(chinese)
+                annotator.annotate(english, chinese)
+                self.assertEqual(str(chinese), markup)
+                for term in chinese.select(".vt-term"):
+                    term.string = term["data-term"]
+                self.assertEqual(chinese.get_text(), retained)
+
     def test_pipeline_translation_respects_its_domain(self):
         config = json.loads((Path(__file__).parents[1] / "terminology.json").read_text(encoding="utf-8"))
         annotator = TermAnnotator(config)
