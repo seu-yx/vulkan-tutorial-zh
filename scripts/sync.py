@@ -96,7 +96,14 @@ def atomic_json(path: Path, value):
     os.replace(temporary, path)
 
 
-def navigation_metadata(entries, known_ids, cache, glossary_version, terminology=None):
+def annotated_title(english, chinese, terminology):
+    original = BeautifulSoup(f'<span>{html.escape(english)}</span>', "html.parser").span
+    translated = BeautifulSoup(f'<span>{html.escape(chinese)}</span>', "html.parser").span
+    terminology.annotate(original, translated)
+    return translated
+
+
+def navigation_metadata(entries, known_ids, cache, glossary_version, terminology=None, reviewed=None):
     """Preserve the official hierarchy, reusing only exact cached title translations."""
     navigation = []
     for raw in entries:
@@ -106,14 +113,16 @@ def navigation_metadata(entries, known_ids, cache, glossary_version, terminology
         if re.match(r"^https?://", raw.get("href", "")):
             entry["href"] = raw["href"]
         seed = SEED_CASEFOLD.get(raw["title"].strip().casefold())
-        translated = seed or cache.get(translation_key(raw["title"], {}, glossary_version))
+        key = translation_key(raw["title"], {}, glossary_version)
+        translated = (restore_translation(reviewed[key], {}) if reviewed and key in reviewed
+                      else seed or cache.get(key))
         if translated:
             entry["titleZh"] = BeautifulSoup(translated, "html.parser").get_text()
             if terminology:
-                english = BeautifulSoup(f'<span>{html.escape(raw["title"])}</span>', "html.parser").span
-                chinese = BeautifulSoup(f'<span>{html.escape(entry["titleZh"])}</span>', "html.parser").span
-                terminology.annotate(english, chinese)
+                chinese = annotated_title(raw["title"], entry["titleZh"], terminology)
                 entry["titleZh"] = chinese.get_text()
+                if chinese.select_one(".vt-term"):
+                    entry["titleZhHtml"] = chinese.decode_contents()
         navigation.append(entry)
     return navigation
 
@@ -218,6 +227,35 @@ def local_term_translation(plain, tokens):
     if not any('data-term=' in value for value in tokens.values()):
         return None
     return restore_translation(plain, tokens)
+
+
+def clean_marker_underscores(english, fragment):
+    """Remove stray Google marker decoration at inline boundaries, before term matching."""
+    # Identifiers such as _DEBUG and names ending in an underscore can be prose, too.
+    if any(re.search(r"(?<![A-Za-z0-9_])_|_(?![A-Za-z0-9_])", text)
+           for text in english.strings):
+        return
+    for inline in fragment.select("strong,em,a"):
+        if inline.find_parent(["pre", "code", "kbd", "samp", "math"]):
+            continue
+        if inline.contents:
+            first = inline.contents[0]
+            if isinstance(first, NavigableString) and first.lstrip().startswith("_"):
+                first.replace_with(re.sub(r"^(\s*)_(?!_)", r"\1", str(first)))
+            last = inline.contents[-1]
+            if isinstance(last, NavigableString) and last.rstrip().endswith("_"):
+                last.replace_with(re.sub(r"(?<!_)_(\s*)$", r"\1", str(last)))
+        elif "anchor" in inline.get("class", []):
+            label = inline.next_sibling
+            if isinstance(label, NavigableString) and label.lstrip().startswith("_"):
+                label.replace_with(re.sub(r"^(\s*)_(?!_)", r"\1", str(label)))
+
+
+def translation_blocks(soup):
+    selector = "p,h2,h3,h4,h5,h6,dt,td,th,div.title"
+    return [block for block in soup.select(selector)
+            if not block.find_parent(["pre", "code", "script", "style"])
+            and not block.select_one(selector)]
 
 
 def wrap_bilingual_pair(soup, block):
@@ -530,6 +568,8 @@ def sync(args):
         if chinese.has_attr("id"): del chinese["id"]
         chinese.clear()
         fragment = BeautifulSoup(value, "html.parser")
+        if not reviewed_source and "_" in value:
+            clean_marker_underscores(english, fragment)
         for child in list(fragment.contents): chinese.append(child)
         terminology.annotate(english, chinese)
         if reviewed_source:
@@ -570,10 +610,7 @@ def sync(args):
                      "sourceUrl": f"https://github.com/KhronosGroup/Vulkan-Tutorial/blob/{commit}/en/{quote(page['id'])}.adoc",
                      "originalUrl": f"https://docs.vulkan.org/tutorial/latest/{quote(page['id'])}.html"})
         register(page["title"], {}, page, None, title=True)
-        candidates = list(soup.select("p,h2,h3,h4,h5,h6,dt,td,th,div.title"))
-        for block in candidates:
-            if block.find_parent(["pre", "code", "script", "style"]) or block.select_one("p,h2,h3,h4,h5,h6,dt,td,th"):
-                continue
+        for block in translation_blocks(soup):
             if not re.search(r"[A-Za-z]{3}", block.get_text()): continue
             # Translation is per short paragraph; oversized generated listings stay in English.
             if len(block.get_text()) > 4500: continue
@@ -581,7 +618,11 @@ def sync(args):
             if not re.search(r"[A-Za-z]{3}", TOKEN_RE.sub("", plain)):
                 local = local_term_translation(plain, tokens)
                 if local is not None:
-                    inject(wrap_bilingual_pair(soup, block), local)
+                    key = translation_key(plain, tokens, version)
+                    is_reviewed = key in reviewed
+                    if is_reviewed:
+                        local = restore_translation(reviewed[key], tokens)
+                    inject(wrap_bilingual_pair(soup, block), local, reviewed_source=is_reviewed)
                     page["translated"] += 1
                     page["total"] += 1
                 continue
@@ -638,17 +679,17 @@ def sync(args):
                 page["resolved"].clear()
             document = {key: value for key, value in page.items() if key != "resolved"}
             if page.get("titleZh"):
-                original_title = BeautifulSoup(f'<span>{html.escape(page["title"])}</span>', "html.parser").span
-                chinese_title = BeautifulSoup(f'<span>{html.escape(page["titleZh"])}</span>', "html.parser").span
-                terminology.annotate(original_title, chinese_title)
+                chinese_title = annotated_title(page["title"], page["titleZh"], terminology)
                 page["titleZh"] = document["titleZh"] = chinese_title.get_text()
                 document["titleZhHtml"] = chinese_title.decode_contents()
+                if chinese_title.select_one(".vt-term"):
+                    page["titleZhHtml"] = document["titleZhHtml"]
             document["stats"] = {"translated": page["translated"], "total": page["total"]}
             atomic_json(data / "pages" / (page["id"] + ".json"), document)
         dirty.clear()
         atomic_json(data / "catalog.json", {
             "pages": [{key: value for key, value in page.items() if key not in ("html", "resolved", "sourceUrl", "originalUrl")} for page in pages],
-            "navigation": navigation_metadata(raw_navigation, known_ids, cache, version, terminology),
+            "navigation": navigation_metadata(raw_navigation, known_ids, cache, version, terminology, reviewed),
             "upstream": {"commit": commit, "syncedAt": now, "url": UPSTREAM_URL[:-4], "branch": "main"},
             "translation": {"translated": sum(page["translated"] for page in pages), "total": sum(page["total"] for page in pages),
                             "provider": PROVIDER, "providerId": "google", "updatedAt": utcnow(), "status": status, "pending": len(jobs)},

@@ -1,5 +1,6 @@
 """Display-only terminology must preserve source, cached markup and identifiers."""
 from pathlib import Path
+import json
 import sys
 import unittest
 
@@ -157,6 +158,15 @@ class TerminologyTests(unittest.TestCase):
         _, english, chinese = self.pair("A democratic presentation", "演示")
         self.assertEqual(annotator.annotate(english, chinese)["added"], 1, "Context exclusions use words, not substrings")
 
+    def test_an_excluded_legacy_hint_keeps_the_literal_noun(self):
+        annotator = TermAnnotator([{"english": "fence", "chinese": "栅栏", "excludeContext": ["chain-link fence"]}])
+        cached = '<span class="vt-term" data-term="fence" title="fence">栅栏</span>'
+        for source, count in (("Render a chain-link fence.", 0), ("Wait for a fence.", 1)):
+            _, english, chinese = self.pair(source, cached)
+            self.assertEqual(annotator.annotate(english, chinese)["existing"], count)
+            self.assertEqual(chinese.get_text(), "栅栏")
+            self.assertEqual(len(chinese.select(".vt-term")), count)
+
     def test_source_counts_bound_alias_replacement(self):
         annotator = TermAnnotator([{"english": "presentation", "chinese": "呈现", "aliases": ["演示"], "normalize": True}])
         _, english, chinese = self.pair("A presentation", "演示和演示")
@@ -260,6 +270,96 @@ class TerminologyTests(unittest.TestCase):
         before = str(chinese)
         self.assertEqual(annotator.annotate(english, chinese)['added'], 0)
         self.assertEqual(str(chinese), before)
+
+    def test_complete_emphasized_labels_and_code_names_are_not_partially_translated(self):
+        annotator = TermAnnotator([{"english": "buffer", "chinese": "缓冲区", "normalize": True}])
+        _, english, chinese = self.pair(
+            "Inspect a buffer and a buffer in Buffer Viewer, not std::buffer or buffer.slang.",
+            "在 _Buffer Viewer_ 检查 std::buffer 和 buffer.slang，再查看 _buffer_。",
+        )
+        result = annotator.annotate(english, chinese)
+        self.assertEqual(result["source"], 3)
+        self.assertEqual(chinese.get_text(), "在 _Buffer Viewer_ 检查 std::buffer 和 buffer.slang，再查看 缓冲区。")
+
+    def test_bare_address_uses_exact_source_label_even_if_google_protected_part_of_it(self):
+        annotator = TermAnnotator([{"english": "shader", "chinese": "着色器"}])
+        href = "https://github.com/shader-slang/slang"
+        marker = '<span class="vt-term" data-term="shader" title="shader">着色器</span>'
+        for label in (href, href.removeprefix("https://")):
+            _, english, chinese = self.pair(
+                f'<a href="{href}">{label}</a>. See <a href="{href}">the shader repository</a>.',
+                f'<a href="{href}">_{label.replace("shader", marker)}_</a>。'
+                f'<a href="{href}">着色器仓库</a>',
+            )
+            result = annotator.annotate(english, chinese)
+            self.assertEqual(result["source"], 1)
+            self.assertEqual(chinese.a.get_text(), label)
+            self.assertIsNone(chinese.a.span)
+            self.assertEqual(chinese.find_all("a")[1].span["data-term"], "shader")
+
+    def test_config_canonicalizes_cached_spelling_and_prefers_technical_compounds(self):
+        config = json.loads((Path(__file__).parents[1] / "terminology.json").read_text(encoding="utf-8"))
+        annotator = TermAnnotator(config)
+        _, english, chinese = self.pair(
+            "Queue families, a swap chain, swapchains, fragment shader, and synchronization primitives.",
+            '<span class="vt-term" data-term="Queue Families" title="Queue Families">队列族</span>、'
+            '<span class="vt-term" data-term="swap chain" title="swap chain">交换链</span>、交换链、'
+            '<span class="vt-term" data-term="Fragment Shader" title="Fragment Shader">片段着色器</span>及'
+            '<span class="vt-term" data-term="synchronization" title="synchronization">同步</span> 原语。',
+        )
+        annotator.annotate(english, chinese)
+        expected = ["queue family", "swapchain", "swapchain", "fragment shader", "synchronization primitive"]
+        self.assertEqual([tag["data-term"] for tag in chinese.select(".vt-term")], expected)
+        self.assertEqual([tag["title"] for tag in chinese.select(".vt-term")], expected)
+        self.assertEqual(chinese.get_text(), "队列族、交换链、交换链、片元着色器及同步原语。")
+        before = str(chinese)
+        annotator.annotate(english, chinese)
+        self.assertEqual(str(chinese), before)
+
+    def test_english_switch_uses_complete_source_grounded_compounds(self):
+        config = json.loads((Path(__file__).parents[1] / "terminology.json").read_text(encoding="utf-8"))
+        annotator = TermAnnotator(config)
+        def cached(key, label):
+            return f'<span class="vt-term" data-term="{key}" title="{key}">{label}</span>'
+        examples = [
+            ("The framebuffer is ready.", cached("framebuffer", "帧缓冲") + "区就绪。",
+             ["framebuffer"], "framebuffer就绪。"),
+            ("A scissor rectangle.", cached("scissor", "裁剪矩形") + " 矩形。",
+             ["scissor rectangle"], "scissor rectangle。"),
+            ("Use a scissor rectangle.", "使用" + cached("scissor", "裁剪矩形") + "。",
+             ["scissor rectangle"], "使用scissor rectangle。"),
+            ("Use a G-Buffer.", "使用 G " + cached("buffer", "缓冲区") + "。",
+             ["G-buffer"], "使用 G-buffer。"),
+            ("An exported file descriptor.", "导出的文件" + cached("descriptor", "描述符") + "。",
+             ["file descriptor"], "导出的file descriptor。"),
+            ("Transfer queue family ownership.", "转移" + cached("queue family", "队列族") + "所有权。",
+             ["queue family ownership"], "转移queue family ownership。"),
+        ]
+        for en, zh, terms, retained in examples:
+            with self.subTest(source=en):
+                _, english, chinese = self.pair(en, zh)
+                annotator.annotate(english, chinese)
+                self.assertEqual([node["data-term"] for node in chinese.select(".vt-term")], terms)
+                markup = str(chinese)
+                annotator.annotate(english, chinese)
+                self.assertEqual(str(chinese), markup)
+                for term in chinese.select(".vt-term"):
+                    term.string = term["data-term"]
+                self.assertEqual(chinese.get_text(), retained)
+
+    def test_pipeline_translation_respects_its_domain(self):
+        config = json.loads((Path(__file__).parents[1] / "terminology.json").read_text(encoding="utf-8"))
+        annotator = TermAnnotator(config)
+        for source, before, after in (
+            ("Compile shaders in the CI pipeline.", "在 CI 管道中编译着色器。", "在 CI 流水线中编译着色器。"),
+            ("The training pipeline can export Vulkan models.", "训练管道可导出 Vulkan 模型。", "训练流程可导出 Vulkan 模型。"),
+            ("Bind a Vulkan pipeline.", "绑定 Vulkan 管道。", "绑定 Vulkan 管线。"),
+            ("The shell runs a pipeline.", "Shell 运行一条管道。", "Shell 运行一条管道。"),
+        ):
+            with self.subTest(source=source):
+                _, english, chinese = self.pair(source, before)
+                annotator.annotate(english, chinese)
+                self.assertEqual(chinese.get_text(), after)
 
 
 if __name__ == "__main__":

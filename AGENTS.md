@@ -50,7 +50,7 @@ python scripts/local.py --setup --serve
 Google 续译默认单并发，文本块上限 500，时间预算约 10 分钟，请求间隔至少 2 秒。手动运行可通过 `translate_limit` 调低上限。译文尚不可用时保留英文，后续运行再续译。
 
 - `translations/google.jsonl` 是长期保留且按键排序的 Google 译文缓存。键包含原文、受保护的代码或链接、术语保护表和缓存版本。参见 [翻译数据说明](translations/README.md)。
-- `translations/reviewed.json` 保存对照原文人工确认的修订，构建时优先采用。这些段落仅作为后续 AI 校订的上下文。键使用同一个 `translation_key()`，值保留全部 `__VT…__` 标记。原文或受保护内容变化后，旧修订不会匹配。
+- `translations/reviewed.json` 保存提交给维护者审阅的对照修订，正文、页面标题和官方导航短标题都可以使用。构建时优先采用这里的译文。这些段落仅作为后续 AI 校订的上下文。键使用同一个 `translation_key()`，值保留全部 `__VT…__` 标记。原文或受保护内容变化后，旧修订不会匹配。
 - `translations/upstream.json` 记录已构建的上游提交和待译数。
 - CI 在检查通过后提交更新的缓存和状态，以 fast-forward 推送到 `main`。若远端已有更新，先保留校订产物，再从最新 `main` 重跑，避免发布旧构建。
 

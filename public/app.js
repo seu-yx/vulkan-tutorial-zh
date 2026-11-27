@@ -41,7 +41,18 @@
       return await response.json();
     } finally { clearTimeout(timer); }
   }
-  const displayTitle = page => state.mode === 'en' ? page.title || page.titleZh || page.id : page.titleZh || page.title || page.id;
+  const retainedTitles = new Map();
+  function translatedTitle(item) {
+    if (!state.terms || !item.titleZhHtml) return item.titleZh;
+    if (!retainedTitles.has(item.titleZhHtml)) {
+      const template = document.createElement('template');
+      template.innerHTML = item.titleZhHtml;
+      renderTermBlock(template.content, true);
+      retainedTitles.set(item.titleZhHtml, template.content.textContent.trim());
+    }
+    return retainedTitles.get(item.titleZhHtml);
+  }
+  const displayTitle = page => state.mode === 'en' ? page.title || page.titleZh || page.id : translatedTitle(page) || page.title || page.id;
   const groupTranslations = { 'Introduction': '简介', 'Overview': '概览', 'Build and development environment': '构建与开发环境', 'Drawing a triangle': '绘制三角形', 'Vertex buffers': '顶点缓冲区', 'Uniform buffers': '统一缓冲区', 'Texture mapping': '纹理映射', 'Depth buffering': '深度缓冲', 'Loading models': '加载模型', 'Generating Mipmaps': '生成 Mipmap', 'Multisampling': '多重采样', 'Compute Shader': '计算着色器', 'Ecosystem Utilities and GPU Compatibility': '生态工具与 GPU 兼容性', 'Vulkan Profiles': 'Vulkan Profiles', 'Android': 'Android', 'Migrating to Modern Asset Formats: glTF and KTX2': '现代资产格式：glTF 与 KTX2', 'Rendering Multiple Objects': '渲染多个对象', 'Multithreading': '多线程', 'Conclusion': '结语', 'Ray Tracing': '光线追踪', 'How to write a Vulkan application in 2026': '2026 年的 Vulkan 应用开发', 'Building a Simple Engine': '构建简单引擎', 'AI-Assisted Vulkan Development': 'AI 辅助 Vulkan 开发', 'Advanced Vulkan Compute': '进阶 Vulkan 计算', 'Advanced glTF': '进阶 glTF', 'Machine Learning Inference': '机器学习推理', 'Vulkan for XR': '面向 XR 的 Vulkan', 'Synchronization': '同步' };
   const groupTitle = name => state.mode === 'en' ? name : groupTranslations[name] || name;
   Object.assign(groupTranslations, {
@@ -77,7 +88,7 @@
     'Late Latching': 'Late Latching 延迟锁存', 'Action Spaces and Input': '动作空间与输入',
     'Slang for Spatial Shaders': '使用 Slang 编写空间着色器', 'Quad-Views and Foveated Rendering': '四视图与注视点渲染',
     'Variable Rate Shading': '可变速率着色', 'Canted Displays': '倾斜式显示器', 'CAVE Architecture': 'CAVE 架构',
-    'Warp and Blend': '图像变形与融合', 'LightField Theory': '光场理论', 'Plenoptic Synthesis': '全光合成',
+    'Warp and Blend': '图像变形与融合', 'LightField Theory': '光场理论', 'Plenoptic Synthesis': '光场视图合成',
     'Scene Understanding': '场景理解', 'ML Inference for Spatial Data': '空间数据的机器学习推理',
     'Semantic Occlusion': '语义遮挡', 'Platform Divergence': '平台差异', 'Spatial Diagnostics': '空间诊断'
   });
@@ -92,7 +103,7 @@
       const parent = stack.at(-1)?.node;
       const page = pages.get(entry.id);
       if (page) used.add(page.id);
-      const node = {title: entry.title, titleZh: entry.titleZh, page, children: [], key: `${parent?.key || 'nav'}|${entry.id || ''}:${entry.title}`};
+      const node = {title: entry.title, titleZh: entry.titleZh, titleZhHtml: entry.titleZhHtml, page, children: [], key: `${parent?.key || 'nav'}|${entry.id || ''}:${entry.title}`};
       (parent ? parent.children : roots).push(node);
       stack.push({depth, node});
     }
@@ -133,7 +144,7 @@
     if (!query) return nodes;
     const compact = query.replace(/[\s_\-]/g, '');
     const matches = node => {
-      const text = `${node.title || ''} ${node.titleZh || ''} ${groupTranslations[node.title] || ''} ${node.children.length ? '' : `${node.page?.title || ''} ${node.page?.titleZh || ''} ${node.page?.id || ''}`}`.toLocaleLowerCase();
+      const text = `${node.title || ''} ${node.titleZh || ''} ${translatedTitle(node) || ''} ${groupTranslations[node.title] || ''} ${node.children.length ? '' : `${node.page?.title || ''} ${node.page?.titleZh || ''} ${node.page ? displayTitle(node.page) : ''} ${node.page?.id || ''}`}`.toLocaleLowerCase();
       return text.includes(query) || text.replace(/[\s_\-]/g, '').includes(compact);
     };
     function visit(node, parentMatches) {
@@ -208,15 +219,86 @@
     if (state.catalog) renderNavigation();
     if (state.page) { updatePageHeading(); buildToc(); updatePageLinks(); }
   }
-  function applyTerms() {
-    $$('#article-content .vt-zh .vt-term, #article-title .vt-term').forEach(term => {
-      if (!term.dataset.originalZh) term.dataset.originalZh = term.textContent;
-      const english = term.dataset.term || term.dataset.english || term.title;
-      if (english) term.textContent = state.terms ? english : term.dataset.originalZh;
-      term.tabIndex = 0;
-      if (english) { term.title = english; term.setAttribute('aria-label', `${term.textContent}（${english}）`); }
-    });
-    if (state.page) buildToc();
+  function trimTermSpacing(term) {
+    // MT can pad protected placeholders with ASCII spaces. Only trim a space
+    // when both sides are Chinese prose in the same inline context.
+    if (term.closest('pre, code, kbd, samp, math, svg')) return;
+    const before = term.previousSibling;
+    const after = term.nextSibling;
+    if (/^\p{Script=Han}/u.test(term.textContent) && before?.nodeType === Node.TEXT_NODE) {
+      before.data = before.data.replace(/([\p{Script=Han}，。！？；：、（）《》“”‘’]) +$/u, '$1');
+    }
+    if (/\p{Script=Han}$/u.test(term.textContent) && after?.nodeType === Node.TEXT_NODE) {
+      after.data = after.data.replace(/^ +(?=[\p{Script=Han}，。！？；：、（）《》“”‘’])/u, '');
+    }
+  }
+  // Project English labels onto the original inline text. Text-node boundaries
+  // include links and emphasis, so spacing is consistent across nested markup.
+  function englishTermTexts(runs) {
+    const values = runs.map(run => run.english || run.text);
+    for (let i = 0; i + 1 < runs.length; i++) {
+      if (!runs[i].english || runs[i + 1].protected || runs[i + 1].english) continue;
+      // Suppress an explicit copy of this English name; keep abbreviations,
+      // interface identifiers, links and explanatory parentheticals.
+      const gloss = /^\s*[（(]\s*([^（）()]+?)\s*[）)]/.exec(values[i + 1]);
+      if (gloss && gloss[1].toLowerCase() === runs[i].english.toLowerCase()) {
+        values[i + 1] = values[i + 1].slice(gloss[0].length);
+      }
+    }
+    let previous = -1;
+    for (let i = 0; i < runs.length; i++) {
+      if (!values[i]) continue;
+      if (previous !== -1 && /[\p{L}\p{N}]$/u.test(values[previous]) && /^[\p{L}\p{N}]/u.test(values[i])) {
+        if (runs[i].english) values[i] = ' ' + values[i];
+        else if (runs[previous].english) values[previous] += ' ';
+      }
+      previous = i;
+    }
+    return values;
+  }
+  const termBlocks = new WeakMap();
+  function renderTermBlock(block, enabled) {
+    let view = termBlocks.get(block);
+    if (!view) {
+      const runs = [], terms = [];
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const parent = node.parentElement;
+        const term = parent?.closest('.vt-term');
+        const protectedText = !!parent?.closest('pre, code, kbd, samp, math, svg');
+        const english = !protectedText && term && (term.dataset.english || term.dataset.term || term.title || '').trim();
+        if (english) terms.push({term, english, chinese: node.data});
+        runs.push({node, english, protected: protectedText || !!parent?.closest('a'), text: node.data});
+      }
+      const values = englishTermTexts(runs);
+      const changes = runs.flatMap((run, i) => values[i] === run.text ? [] : [{node: run.node, chinese: run.text, english: values[i]}]);
+      view = {changes, terms};
+      termBlocks.set(block, view);
+    }
+    for (const edit of view.changes) edit.node.data = enabled ? edit.english : edit.chinese;
+    for (const {term, english, chinese} of view.terms) {
+      term.title = enabled ? chinese : english;
+      if (enabled) term.lang = 'en';
+      else term.removeAttribute('lang');
+      // Links already have a keyboard focus stop of their own.
+      if (enabled || term.closest('a') || chinese === english) term.removeAttribute('tabindex');
+      else term.tabIndex = 0;
+    }
+    return view.terms.length;
+  }
+  function applyArticleTerms() {
+    const content = $('#article-content'), header = $('#article-title');
+    const blocks = new Set($$('.vt-zh .vt-term', content).map(term => term.closest('.vt-zh')));
+    let count = renderTermBlock(header, state.terms);
+    for (const block of blocks) count += renderTermBlock(block, state.terms);
+    $('.term-setting').hidden = false;
+    $('.toc-tip').hidden = !count;
+  }
+  function setEnglishTerms(enabled) {
+    state.terms = enabled;
+    document.documentElement.toggleAttribute('data-english-terms', enabled);
+    if (state.catalog) renderNavigation();
+    if (state.page) { updatePageHeading(); buildToc(); updatePageLinks(); }
   }
   function renderNavigation() {
     const nav = $('#chapter-nav'); let scrollTop = nav.scrollTop; nav.replaceChildren();
@@ -245,7 +327,7 @@
             if (state.query.trim()) return;
             state.navGroups[node.key] = section.open; saveGroupPreferences();
           });
-          const summary = document.createElement('summary'); const label = document.createElement('span'); label.className = 'nav-label'; label.textContent = state.mode === 'en' ? node.title : node.titleZh || groupTitle(node.title); label.title = node.title; summary.append(label);
+          const summary = document.createElement('summary'); const label = document.createElement('span'); label.className = 'nav-label'; label.textContent = state.mode === 'en' ? node.title : translatedTitle(node) || groupTitle(node.title); label.title = node.title; summary.append(label);
           const count = document.createElement('span'); count.className = 'group-count'; count.textContent = String(node.ids.size); summary.append(count); section.append(summary, renderNodes(node.children, depth + 1)); li.append(section);
         } else if (node.page) {
           const page = node.page; const link = document.createElement('a'); link.href = pageHref(page.id); link.dataset.page = page.id; link.textContent = displayTitle(page); link.title = `${page.titleZh || ''}${page.titleZh ? ' · ' : ''}${page.title || ''}`; link.style.setProperty('--depth', 0);
@@ -263,8 +345,10 @@
     const page = state.page; const title = displayTitle(page);
     if (state.mode !== 'en' && page.titleZhHtml) $('#article-title').innerHTML = page.titleZhHtml;
     else $('#article-title').textContent = title;
+    termBlocks.delete($('#article-title'));
+    applyArticleTerms();
     $('#breadcrumb-current').textContent = title; $('#article-group').textContent = groupTitle(page.group || state.catalog?.pages.find(item => item.id === page.id)?.group || 'VULKAN TUTORIAL');
-    $('#article-subtitle').textContent = state.mode !== 'en' && page.titleZh && page.titleZh !== page.title ? page.title : '';
+    $('#article-subtitle').textContent = state.mode !== 'en' && page.titleZh && title.trim().toLowerCase() !== page.title?.trim().toLowerCase() ? page.title : '';
     $('#article-subtitle').hidden = !$('#article-subtitle').textContent;
     $('#original-link').href = page.originalUrl || `https://docs.vulkan.org/tutorial/latest/${page.id.split('/').map(encodeURIComponent).join('/')}.html`;
     $('#source-link').href = page.sourceUrl || `https://github.com/KhronosGroup/Vulkan-Tutorial/blob/main/en/${page.id.split('/').map(encodeURIComponent).join('/')}.adoc`;
@@ -273,9 +357,10 @@
     const wordCount = englishText ? englishText.split(/\s+/).length : $('#article-content').textContent.split(/\s+/).length;
     $('#reading-time').textContent = `约 ${Math.max(1, Math.ceil(wordCount / 220))} 分钟阅读`;
     const translated = Number(page.translated ?? page.stats?.translated ?? 0), total = Number(page.total ?? page.stats?.total ?? 0);
-    const translationStatus = total ? `Google 翻译 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : 'Google 翻译 · 可随时对照原文';
-    const polished = Number(page.stats?.polished ?? 0);
-    $('#translation-status').textContent = polished > 0 ? `${translationStatus} · ${polished} 段已校订` : translationStatus;
+    const translationStatus = total ? `中文译文 · ${Math.min(translated < total ? 99 : 100, Math.floor(translated / total * 100))}% 已翻译` : '中文译文 · 可随时对照原文';
+    const reviewed = $$('.vt-zh[data-vt-reviewed="true"]', $('#article-content')).length;
+    const edited = reviewed + Number(page.stats?.polished ?? 0);
+    $('#translation-status').textContent = edited ? `${translationStatus} · ${edited} 段已校订` : translationStatus;
     const pending = total > translated;
     const notice = $('#notice'); notice.hidden = !pending;
     if (pending) notice.textContent = '本章翻译正在补全，尚未翻译的段落保留英文。你可以随时切换到英文或中英对照阅读。';
@@ -286,7 +371,6 @@
     $('#page-license').textContent = license ? `本章许可：${license}` : '';
     $('#page-copyright').hidden = !copyright.length;
     $('#page-copyright').textContent = copyright.join('\n');
-    applyTerms();
   }
   function buildToc() {
     if (observer) observer.disconnect();
@@ -363,7 +447,7 @@
     });
     $$('a', content).forEach(link => { if (/^https?:\/\//.test(link.href) && new URL(link.href).origin !== location.origin) { link.target = '_blank'; link.rel = 'noopener noreferrer'; } });
     $$('img', content).forEach(image => { image.loading = 'lazy'; image.decoding = 'async'; });
-    applyTerms();
+    $$('.vt-zh .vt-term', content).forEach(trimTermSpacing);
   }
   async function loadPage(id, options = {}) {
     const token = ++state.request;
@@ -384,6 +468,7 @@
     } catch (error) { if (token === state.request) showError('章节暂时无法加载', '请检查网络后重试，或通过上方链接阅读官方原文。', () => loadPage(id, options)); }
   }
   function showError(title, message, retry) {
+    $('.term-setting').hidden = true; $('.toc-tip').hidden = true;
     const content = $('#article-content'); content.replaceChildren(); content.classList.remove('is-loading'); content.setAttribute('aria-busy', 'false'); $('#article-title').textContent = title; $('#notice').hidden = true;
     const section = document.createElement('div'); section.className = 'error-state'; const p = document.createElement('p'); p.textContent = message; section.append(p);
     if (retry) { const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = '重新加载'; button.addEventListener('click', retry); section.append(button); }
@@ -396,10 +481,10 @@
     $('#about-translation').textContent = translation.total ? `${Number(translation.translated || 0).toLocaleString()} / ${Number(translation.total).toLocaleString()} 段落` : '翻译进度尚未记录';
   }
   async function init() {
-    setMode(state.mode); setSidebarCollapsed(state.sidebarCollapsed, false); setMenu(false); $('#english-terms').checked = state.terms;
+    setEnglishTerms(state.terms); setMode(state.mode); setSidebarCollapsed(state.sidebarCollapsed, false); setMenu(false); $('#english-terms').checked = state.terms;
     window.addEventListener('resize', () => { if (!matchMedia('(max-width: 999px)').matches && document.body.classList.contains('menu-open')) setMenu(false); else syncSidebarAccess(); if (!matchMedia('(max-width: 1100px)').matches) setSearchOpen(false); else if ($('#header-search')?.contains(document.activeElement)) setSearchOpen(true); });
     $$('.mode-button').forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
-    $('#english-terms').addEventListener('change', event => { state.terms = event.target.checked; storage.set('vt-terms', String(state.terms)); applyTerms(); });
+    $('#english-terms').addEventListener('change', event => { setEnglishTerms(event.target.checked); storage.set('vt-terms', String(state.terms)); });
     $('#theme-toggle').addEventListener('click', () => { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; storage.set('vt-theme', theme); $('#theme-toggle').setAttribute('aria-label', `切换${theme === 'dark' ? '浅色' : '深色'}模式`); });
     $('#chapter-search').addEventListener('input', event => { state.query = event.target.value; if (state.catalog) renderNavigation(); if (state.query.trim()) revealSidebar(); });
     $('#search-toggle')?.addEventListener('click', () => { const open = !document.body.classList.contains('search-open'); setSearchOpen(open, open); });

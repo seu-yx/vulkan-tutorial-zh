@@ -10,6 +10,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BuildNavigationTests(unittest.TestCase):
+    def test_inline_code_ends_before_a_possessive_in_prose_only(self):
+        with tempfile.TemporaryDirectory(prefix="vulkan-possessive-") as temporary:
+            upstream = Path(temporary)
+            nav = upstream / "antora/modules/ROOT/nav.adoc"
+            nav.parent.mkdir(parents=True)
+            nav.write_text("* xref:intro.adoc[Introduction]\n", encoding="utf-8")
+            source = upstream / "en/intro.adoc"
+            source.parent.mkdir(parents=True)
+            phrase = "`Simple Engine`'s camera uses `XrSwapchain`'s images and `XrSpace`."
+            source.write_text(f"= Introduction\n\n{phrase}\n\n[source,text]\n----\n{phrase}\n----\n", encoding="utf-8")
+            output = upstream / "rendered.json"
+            subprocess.run(["node", str(ROOT / "scripts/build.mjs"), "--upstream", str(upstream),
+                            "--output", str(output)], check=True, capture_output=True)
+            markup = json.loads(output.read_text(encoding="utf-8"))["pages"][0]["html"]
+            self.assertIn("<code>Simple Engine</code>'s camera uses <code>XrSwapchain</code>'s images and <code>XrSpace</code>.", markup)
+            self.assertIn(phrase, markup)
+
     def test_navigation_is_reparsed_while_page_html_is_cached(self):
         with tempfile.TemporaryDirectory(prefix="vulkan-navigation-") as temporary:
             upstream = Path(temporary) / "upstream"
