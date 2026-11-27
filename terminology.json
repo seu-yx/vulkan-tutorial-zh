@@ -376,11 +376,13 @@
       "english": "scissor",
       "chinese": "裁剪矩形",
       "aliases": [
-        "裁剪矩形"
+        "裁剪矩形",
+        "剪刀"
       ],
       "variants": [
         "scissors"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "synchronization",
@@ -1047,12 +1049,13 @@
     },
     {
       "english": "frames in flight",
-      "chinese": "并行帧",
+      "chinese": "在途帧",
       "aliases": [
         "并行帧",
         "飞行中的帧",
         "在途帧"
-      ]
+      ],
+      "normalize": true
     },
     {
       "english": "late latching",
@@ -1803,6 +1806,34 @@
       "variants": [
         "write after write"
       ]
+    },
+    {
+      "english": "headset",
+      "chinese": "头显",
+      "variants": [
+        "headsets"
+      ],
+      "aliases": [
+        "头显",
+        "头戴显示器",
+        "耳机"
+      ],
+      "normalize": true,
+      "context": {
+        "requireAny": [
+          "OpenXR",
+          "XR",
+          "VR",
+          "display",
+          "view",
+          "render",
+          "runtime",
+          "GPU",
+          "pose",
+          "lens",
+          "spatial"
+        ]
+      }
     }
   ]
 }
