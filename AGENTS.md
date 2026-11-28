@@ -74,11 +74,13 @@ Google 续译默认单并发，文本块上限 500，时间预算约 10 分钟�
 
 Google 构建完成后，自动校订优先处理新增或变更的章节，其余时间继续处理存量。每次请求只校订一整篇，几篇之间串行处理。每轮最多 5 篇，手动运行可设 `polish_limit` 为 1–10 篇，仍受时间预算约束。仓库 Actions 变量 `POLISH_ENABLED=false` 可暂停新请求。
 
-Copilot 按章节顺序对照英文和当前译文，只修明显不通顺或不准确的局部。返回的改动仍按文本块校验，保护术语、代码、链接、数字和关键条件。校验失败的改动保留原译。额度、权限或服务错误会暂停推理，已有有效校订仍可随站点发布。使用 GitHub 提供的 `GITHUB_TOKEN` 和 `copilot-requests: write`。个人仓库按所有者的 Copilot 额度计量，超额用量由账户预算控制。[GitHub 预算说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
+Copilot 按章节顺序对照英文和当前译文。对于有标注术语的段落、标题和导航标签，模型同时看到阅读器关闭及开启“保留英文术语”的文本。校订和全站审计共用阅读器的英文替换、空格和括注处理逻辑。脚本先筛出相邻的重复英文术语，再把疑点交给模型结合上下文判断；已经检查过的同一疑点不会再次触发请求。模型可以报告只读术语块的问题，已审校正文仍受保护。
+
+自动采纳的局部修改必须保留占位符、数字、关键条件，并符合逐段改写预算。涉及否定、数量、术语或整句重译时，模型可通过 `issues` 给出完整中文候选和理由。校验拒绝的候选也会尽可能还原为可读文本，单独留给维护者对照，不会进入自动发布的译文缓存。原文有缺损时允许只报告原因。额度、权限或服务错误会暂停推理，已有有效校订仍可随站点发布。使用 GitHub 提供的 `GITHUB_TOKEN` 和 `copilot-requests: write`。[GitHub 预算说明](https://docs.github.com/en/billing/how-tos/set-up-budgets)
 
 - `translations/polish.json` 保存有效校订和已确认无需改动的结果。原文、基础译文或受保护内容变化时，对应旧记录自动失效。
 - `translations/polish-state.json` 按章节内容记录完成进度、失败和冷却状态。`review_issues` 记录模型发现但无法安全修正的问题，以及被校验拒绝的建议。完成篇数表示执行过整章校订，待人工段落另行累计。英文或基础译文变化的章节重新排队。
-- **polish-progress-<运行编号>** 产物包含对照报告、校订缓存和 `translation-quality.json`。质量报告离线检查可疑的英文强调词残留，并定位到原章节。Git 写回失败时，可按记录键核对并恢复有效条目。
+- **polish-progress-<运行编号>** 产物包含 `polish-auto.json` 逐段对照、校订缓存和 `translation-quality.json`。本轮采纳数为 `accepted_this_run`，待复核候选数为 `proposed_for_review_this_run`，全站应用的缓存数为 `applied`。查看 `review_issues` 时可对照 `english`、`current`、`proposed` 和 `reason`；涉及术语显示时还会保留 `english_terms`。旧记录沿用当时保存的原因。质量报告在 `repeatedTerms` 中列出正文、页标题和导航的疑似重复词及两种显示文本，并继续检查英文强调词残留。Git 写回失败时，可按记录键核对并恢复有效条目。
 
 人工抽查时，运行整章预览工作流，选择 `main`，填写章节 ID（例如 `01_Overview`，也可从 URL 的 `page=` 参数取得）。模型留空使用 Copilot Auto。该预览会消耗 Copilot 额度。下载 **polish-preview-<运行编号>**，参照 `review.json` 比对英文、译文和校订稿，根据 `cache_key` 将采纳的结果合并到最新的 `translations/polish.json`。[Polish translations preview](.github/workflows/polish.yml)
 

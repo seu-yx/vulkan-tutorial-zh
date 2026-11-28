@@ -15,10 +15,19 @@ import re
 import signal
 import shutil
 import subprocess
+import sys
 import time
 from tempfile import TemporaryDirectory
 
 from bs4 import BeautifulSoup, NavigableString
+
+if __package__:
+    from .audit_translation_quality import repeated_term_phrases
+    from .term_views import project_term_views
+else:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from audit_translation_quality import repeated_term_phrases
+    from term_views import project_term_views
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = re.compile(r"⟦\d+⟧")
@@ -48,12 +57,14 @@ PROMPT = """你是简体中文 Vulkan 教程校对者。本次输入只有一篇
 中文可能包含过去已经采纳的局部校订，默认保留；只有确有必要且仍为最小修改时才能改善。
 原样保留 Chinese 中每个 ⟦数字⟧ 占位符，只能出现一次，顺序保持不变。
 protected 字段按顺序解释占位符。不要把这些内容再写进译文，不要加入新的数字、英文或标记。
-editable=false 的块只用于上下文，不能修改；代码清单只给位置标记，不参与校订。
+提交 edits 时，仅计算占位符之外的正文；max_edit_chars 是允许增删替换的字符数，assertions 的词及出现顺序必须保留。校验也会对照原始机翻，不能靠多轮累积改写。
+有术语的块提供 reader.off（默认中文）和 reader.on（保留所有英文术语），对照 English 检查。display_findings 是脚本发现的疑似重复，请结合原意判断；有误时写入 issues，说明哪种显示有问题及具体词组。若只是显示问题，勿为掩盖问题而改正文。
+issue_only=true 的块可以在 issues 中报告但不接受 edits；其余 editable=false 块只提供上下文。代码清单仅给位置标记。
 完整检查本章全部可编辑块。已准确自然的块可以省略。edits 只包含能在上述限制内安全修正的块的完整 Chinese 字符串。
-遇到无法安全修正的明显问题（如技术含义或否定反了、普通英文被占位符锁住），用 issues 记录篇内短 id 与单行原因（最多 240 字符）。同一个 id 只能出现在 edits 或 issues 中。没有问题时返回空 issues 对象。
+遇到需要纠正条件、否定、数量、术语或重译整句等无法自动采纳的问题，把篇内短 id 写入 issues，值为 {"reason":"依据英文说明问题，最多 240 字符","proposed":"可供人工复核的完整中文译文"}。proposed 写读者可读的单行纯文本，直接写术语、数字、API 名等，勿用占位符。原文有缺损或依据不足时只给 reason。issues 只供复核，不会自动应用。同一个 id 只能出现在 edits 或 issues 中。没有问题时返回空 issues 对象。
 仅输出一个 JSON 对象：chapter_id 与 chapter_key 原样回显 chapter.id 与 chapter.key，
 reviewed_complete 必须为 true，reviewed_count 必须等于 chapter.editable_count，edits 是篇内短 id 到新 Chinese 字符串的对象。
-未返回的可编辑块表示已经检查且通过。不要输出不存在或只读块的 id。
+未返回的可编辑块表示已经检查且通过。只能对 editable=true 提交 edits；只能为 editable=true 或 issue_only=true 的块提交 issues。
 输出前再次核对英文中的否定、量词、条件、先后顺序和约束；发现无法安全修正的问题时在 issues 中报告。
 """
 
@@ -67,6 +78,11 @@ def paragraph_key(page_id, english, chinese):
     clean.attrs = {name: value for name, value in clean.attrs.items() if name not in {"data-polish-key", "data-polish-result"}}
     identity = json.dumps([VERSION, page_id, str(english), str(clean)], ensure_ascii=False)
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+
+def edit_budget(prose):
+    length = len(prose)
+    return min(2, length) if length <= 8 else min(44, max(1, length * 18 // 100))
 
 
 @dataclass
@@ -102,8 +118,7 @@ class Paragraph:
             in SequenceMatcher(None, original, prose, autojunk=False).get_opcodes()
             if tag != "equal"
         )
-        budget = min(2, len(original)) if len(original) <= 8 else min(44, max(1, (len(original) * 18) // 100))
-        if changes > budget:
+        if changes > edit_budget(original):
             raise ValueError("Edit exceeds the local correction budget")
         if not apply:
             return
@@ -118,16 +133,34 @@ class Paragraph:
             self.chinese["data-polish-result"] = paragraph_key(self.page_id, self.english_node, self.chinese)
 
     def request(self):
+        prose = MARKER.sub("", self.draft)
         return {
             "id": self.key,
             "English": self.english,
             "Chinese": self.draft,
+            "max_edit_chars": edit_budget(prose),
+            "assertions": ASSERTIONS.findall(prose),
             "protected": [
                 (item.get_text(" ", strip=True) if hasattr(item, "get_text") and
                  not isinstance(item, str) else str(item))[:160]
                 for item in self.protected
             ],
         }
+
+    def proposed_text(self, edited):
+        """Display a rejected edit as text for the reviewer without mutating any nodes."""
+        if not _valid_candidate(edited, allow_layout=True):
+            return None
+        labels = {f"⟦{i}⟧": str(node) if isinstance(node, str) else node.get_text()
+                  for i, node in enumerate(self.protected)}
+        size = len(edited)
+        for marker in MARKER.finditer(edited):
+            key = marker.group()
+            size += len(labels.get(key, key)) - len(key)
+        if size > MAX_BLOCK_LENGTH:
+            return None
+        text = MARKER.sub(lambda m: labels.get(m.group(), m.group()), edited)
+        return text if _valid_candidate(text, allow_layout=True) else None
 
 
 def paragraphs(soup, page_id, counts=None):
@@ -241,7 +274,7 @@ def apply_cache(data, page_ids, entries, *, strict=True):
 
 
 def chapter_prompt(chapter, items):
-    payload = json.dumps({"chapter": chapter, "blocks": items}, ensure_ascii=False)
+    payload = json.dumps({"chapter": chapter, "blocks": items}, ensure_ascii=False, separators=(",", ":"))
     return PROMPT + "\n" + payload.replace("@", r"\u0040")
 
 
@@ -366,6 +399,8 @@ class Chapter:
     editable: dict
     bases: dict
     counts: Counter
+    issue_only: dict
+    label_key: str | None
 
     @property
     def metadata(self):
@@ -377,7 +412,37 @@ class Chapter:
         return len(chapter_prompt(self.metadata, self.units).encode("utf-8"))
 
 
-def load_chapter(data, page_id, entries):
+def navigation_term_labels(data):
+    """Associate annotated sidebar labels, including group headings, with a chapter."""
+    catalog = data / "catalog.json"
+    if not catalog.exists():
+        return {}
+    items = json.loads(catalog.read_text(encoding="utf-8")).get("navigation", [])
+    labels = {}
+    next_page = None
+    for index in reversed(range(len(items))):
+        item = items[index]
+        next_page = item.get("id") or next_page
+        if next_page and not item.get("href") and "vt-term" in item.get("titleZhHtml", ""):
+            labels.setdefault(next_page, []).append((f"nav-{index}", item))
+    return {page: list(reversed(group)) for page, group in labels.items()}
+
+
+def attach_reader_views(marked, issue_only, *, trim=True):
+    views = project_term_views([node for _, node, _ in marked], trim=trim)
+    for (unit, _, key), view in zip(marked, views, strict=True):
+        unit["reader"] = {"off": view["off"], "on": view["on"]}
+        repeated = repeated_term_phrases(view)
+        if repeated:
+            unit["display_findings"] = repeated
+        if not unit["editable"]:
+            unit["issue_only"] = True
+            issue_only[unit["id"]] = key
+            # The exact Chinese text is already in reader.off.
+            unit.pop("Chinese", None)
+
+
+def load_chapter(data, page_id, entries, navigation=None):
     page = json.loads(page_path(data, page_id).read_text(encoding="utf-8"))
     original = BeautifulSoup(page["html"], "html.parser")
     counts = Counter()
@@ -390,7 +455,25 @@ def load_chapter(data, page_id, entries):
             try: block.restore(previous)
             except ValueError: pass
     by_node = {id(block.chinese): block for block in paragraphs(working, page_id)}
-    editable, units, assigned = {}, [], {}
+    editable, units, assigned, issue_only = {}, [], {}, {}
+    marked = []
+    labels = []
+    if navigation is None:
+        navigation = navigation_term_labels(data)
+    for label_id, label in [("title", page), *navigation.get(page_id, ())]:
+        fragment = label.get("titleZhHtml", "")
+        if "vt-term" not in fragment:
+            continue
+        unit = {"id": label_id, "editable": False, "English": label["title"],
+                "kind": "title" if label_id == "title" else "navigation"}
+        label_key = hashlib.sha256(json.dumps([page_id, unit["kind"], label["title"], fragment],
+                                              ensure_ascii=False).encode()).hexdigest()
+        units.append(unit)
+        labels.append((unit, BeautifulSoup(fragment, "html.parser"), label_key))
+    attach_reader_views(labels, issue_only, trim=False)
+    # Sidebar and title markup live outside the body covered by the chapter key.
+    label_key = (hashlib.sha256("".join(key for _, _, key in labels).encode()).hexdigest()
+                 if labels else None)
     selector = ".vt-pair,pre,img,p,h1,h2,h3,h4,h5,h6,li,td,th,dt,dd"
     for node in working.select(selector):
         if any("vt-pair" in parent.get("class", []) or parent.name == "pre" for parent in node.parents):
@@ -413,9 +496,14 @@ def load_chapter(data, page_id, entries):
                 assigned[block.key] = short_id
                 units.append(unit)
             else:
-                units.append({"id": f"context-{len(units) + 1}", "editable": False,
-                              "kind": "context" if chinese is not None else "untranslated",
-                              "English": _context_text(english), "Chinese": _context_text(chinese)})
+                unit = {"id": f"context-{len(units) + 1}", "editable": False,
+                        "kind": "context" if chinese is not None else "untranslated",
+                        "English": _context_text(english), "Chinese": _context_text(chinese)}
+                units.append(unit)
+            if (english is not None and chinese is not None and chinese.select_one(".vt-term")
+                    and not chinese.select_one("pre,.vt-pair")):
+                key = block.key if block else paragraph_key(page_id, english, chinese)
+                marked.append((unit, chinese, key))
         elif node.name == "pre":
             units.append({"id": f"context-{len(units) + 1}", "editable": False,
                           "kind": "code", "English": "[Code listing omitted; preserve it unchanged]", "Chinese": None})
@@ -425,12 +513,30 @@ def load_chapter(data, page_id, entries):
         elif not node.select_one(".vt-pair,pre,p,h1,h2,h3,h4,h5,h6,li,td,th,dt,dd"):
             units.append({"id": f"context-{len(units) + 1}", "editable": False,
                           "kind": "untranslated", "English": _context_text(node), "Chinese": None})
-    return Chapter(page_id, identity, page.get("title", page_id), page.get("titleZh", ""), units, editable, bases, counts)
+    attach_reader_views(marked, issue_only)
+    return Chapter(page_id, identity, page.get("title", page_id), page.get("titleZh", ""),
+                   units, editable, bases, counts, issue_only, label_key)
 
 
 def _valid_review_reason(reason):
     return (isinstance(reason, str) and 0 < len(reason) <= MAX_REVIEW_ISSUE_LENGTH
             and bool(reason.strip()) and reason.isprintable())
+
+
+def _valid_candidate(text, *, allow_layout=False):
+    spaces = "\u00a0\u202f\u3000" + ("\n\r\t" if allow_layout else "")
+    return (isinstance(text, str) and 0 < len(text) <= MAX_BLOCK_LENGTH and bool(text.strip())
+            and all(char.isprintable() or char in spaces for char in text))
+
+
+def _review_suggestion(issue):
+    if isinstance(issue, str):  # Older responses contained just the reason.
+        issue = {"reason": issue}
+    if (not isinstance(issue, dict) or not {"reason"} <= issue.keys() <= {"reason", "proposed"}
+            or not _valid_review_reason(issue["reason"])
+            or ("proposed" in issue and not _valid_candidate(issue["proposed"]))):
+        raise InvalidPolishResponse("Invalid reason or candidate in review issue")
+    return issue
 
 
 def review_chapter(chapter, answer, entries):
@@ -442,16 +548,17 @@ def review_chapter(chapter, answer, entries):
             or set(answer["edits"]) - chapter.editable.keys()):
         raise InvalidPolishResponse("Missing complete-chapter confirmation, wrong identity/count, or unknown editable ID")
     issues = answer.get("issues", {})
-    if (not isinstance(issues, dict) or issues.keys() - chapter.editable.keys()
-            or issues.keys() & answer["edits"].keys() or not all(map(_valid_review_reason, issues.values()))):
+    if (not isinstance(issues, dict) or issues.keys() - chapter.editable.keys() - chapter.issue_only.keys()
+            or issues.keys() & answer["edits"].keys()):
         raise InvalidPolishResponse("Invalid review issue ID, overlapping edit, or invalid reason")
+    issues = {key: _review_suggestion(issue) for key, issue in issues.items()}
     updated, audit = dict(entries), []
     for short_id, block in chapter.editable.items():
         base = chapter.bases[block.key]
         item = {"id": short_id, "cache_key": block.key, "english": block.english,
                 "google": base.chinese.get_text(), "current": block.chinese.get_text()}
         if short_id in issues:
-            item.update(status="needs_review", reason=issues[short_id], polished=item["current"])
+            item.update(status="needs_review", polished=item["current"], **issues[short_id])
             audit.append(item)
             continue
         edited = answer["edits"].get(short_id, block.draft)
@@ -465,7 +572,25 @@ def review_chapter(chapter, answer, entries):
             item.update(status="unchanged" if edited == block.draft else "edited", polished=block.chinese.get_text())
         except ValueError as error:
             item.update(status="rejected", reason=str(error), polished=item["current"])
+            proposed = block.proposed_text(edited)
+            if proposed is not None:
+                item["proposed"] = proposed
         audit.append(item)
+    units = {unit["id"]: unit for unit in chapter.units}
+    for short_id, suggestion in issues.items():
+        if short_id in chapter.issue_only:
+            unit = units[short_id]
+            current = unit["reader"]["off"]
+            audit.append({"id": short_id, "cache_key": chapter.issue_only[short_id],
+                          "english": unit["English"], "current": current, "polished": current,
+                          "status": "needs_review", **suggestion})
+    for item in audit:
+        unit = units[item["id"]]
+        if "reader" in unit and item["status"] in {"needs_review", "rejected"}:
+            item["current"] = unit["reader"]["off"]
+            item["english_terms"] = unit["reader"]["on"]
+            if "display_findings" in unit:
+                item["display_findings"] = unit["display_findings"]
     # The chapter was explicitly reviewed. Unsafe suggestions remain rejected, not a reason to bill the chapter again.
     return updated, audit, True
 
@@ -496,6 +621,20 @@ def _timestamp(value):
     return parsed
 
 
+def _valid_saved_issue(issue):
+    if (not isinstance(issue, dict) or not isinstance(issue.get("cache_key"), str)
+            or not KEY.fullmatch(issue["cache_key"]) or not _valid_review_reason(issue.get("reason"))):
+        return False
+    if issue.keys() == {"cache_key", "reason"}:  # v2 records written before candidates were retained.
+        return True
+    required = {"cache_key", "reason", "status", "english", "current"}
+    return (required <= issue.keys() <= required | {"proposed", "english_terms"}
+            and issue["status"] in ("needs_review", "rejected")
+            and all(isinstance(issue[field], str) for field in ("english", "current"))
+            and ("english_terms" not in issue or isinstance(issue["english_terms"], str))
+            and ("proposed" not in issue or _valid_candidate(issue["proposed"], allow_layout=True)))
+
+
 def read_state(path):
     if not path.exists():
         return {"version": STATE_VERSION, "keys": [], "chapters": {}, "completed": [], "priority": [], "failures": {}}
@@ -510,6 +649,12 @@ def read_state(path):
     for field in ("keys", "priority", "completed"):
         values = state.get(field)
         if not isinstance(values, list) or any(not isinstance(key, str) or not KEY.fullmatch(key) for key in values) or len(set(values)) != len(values):
+            raise ValueError(f"Invalid polish inventory {field}")
+    for field in ("display_checked", "label_keys"):
+        saved = state.get(field, {})
+        if not isinstance(saved, dict) or any(
+                not isinstance(v, str) or not KEY.fullmatch(v) or not KEY.fullmatch(k)
+                for k, v in saved.items()):
             raise ValueError(f"Invalid polish inventory {field}")
     chapters = state.get("chapters")
     if not isinstance(chapters, dict) or any(not isinstance(name, str) or not name or not isinstance(key, str) or not KEY.fullmatch(key) for name, key in chapters.items()):
@@ -528,26 +673,28 @@ def read_state(path):
         raise ValueError("Invalid polish review issues")
     for key, issues in review_issues.items():
         if (not KEY.fullmatch(key) or not isinstance(issues, list) or not issues
-                or any(not isinstance(issue, dict) or set(issue) != {"cache_key", "reason"}
-                       or not isinstance(issue["cache_key"], str) or not KEY.fullmatch(issue["cache_key"])
-                       or not _valid_review_reason(issue["reason"]) for issue in issues)):
+                or not all(map(_valid_saved_issue, issues))):
             raise ValueError("Invalid polish review issue record")
     _timestamp(state.get("retry_after"))
     return state
 
 
-def collect_chapters(data, page_ids, entries):
+def collect_chapters(data, page_ids, entries, navigation=None):
     """Keep small chapter descriptors; no section or paragraph is submitted separately."""
     candidates = []
     counts = Counter()
     for page_id in page_ids:
-        chapter = load_chapter(data, page_id, entries)
+        chapter = load_chapter(data, page_id, entries, navigation)
         counts.update(chapter.counts)
-        if not chapter.editable:
+        if not chapter.editable and not chapter.issue_only:
             counts["no_editable_chapters"] += 1
             continue
+        findings = [(unit["English"], unit["reader"], unit["display_findings"])
+                    for unit in chapter.units if "display_findings" in unit]
         candidates.append({"key": chapter.key, "page": page_id, "chapter": chapter.title,
-                           "editable": len(chapter.editable), "input_bytes": chapter.input_bytes})
+                           "editable": len(chapter.editable), "input_bytes": chapter.input_bytes, "label_key": chapter.label_key,
+                           "display_key": hashlib.sha256(json.dumps(findings, ensure_ascii=False).encode()).hexdigest()
+                           if findings else None})
         counts["too_large_chapters"] += int(chapter.input_bytes > MAX_CHAPTER_INPUT_BYTES)
     counts["chapters"] = len(candidates)
     return candidates, counts
@@ -560,16 +707,26 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
     now = datetime.now(timezone.utc)
     previous = read_state(state_file)
     initialized = state_file.exists() and previous.get("migrated_from") != 1
-    candidates, counts = collect_chapters(data, page_ids, entries)
+    navigation = navigation_term_labels(data)
+    candidates, counts = collect_chapters(data, page_ids, entries, navigation)
     keys = {item["key"] for item in candidates}
     chapter_keys = {item["page"]: item["key"] for item in candidates}
     completed = set(previous.get("completed", [])) & keys
+    label_keys = {item["key"]: item["label_key"] for item in candidates if item["label_key"]}
+    prior_labels = previous.get("label_keys", {})
+    changed_labels = {key for key in keys if "label_keys" in previous and prior_labels.get(key) != label_keys.get(key)}
+    display_flags = {item["key"]: item["display_key"] for item in candidates if item["display_key"]}
+    display_checked = {key: value for key, value in previous.get("display_checked", {}).items()
+                       if display_flags.get(key) == value}
+    # Revisit previously completed chapters with newly detected duplicate terms once.
+    recheck = (display_flags.keys() - display_checked.keys()) | changed_labels
+    completed.difference_update(recheck)
     oversized = {item["key"] for item in candidates if item["input_bytes"] > MAX_CHAPTER_INPUT_BYTES}
     updated = dict(entries)
     failures = {key: value for key, value in previous.get("failures", {}).items() if key in keys and key not in completed}
-    review_issues = {key: value for key, value in previous.get("review_issues", {}).items() if key in completed}
+    review_issues = {key: value for key, value in previous.get("review_issues", {}).items() if key in keys}
     changed_keys = {key for page, key in chapter_keys.items() if previous.get("chapters", {}).get(page) != key} if initialized else set()
-    priority = (set(previous["priority"]) | changed_keys) & keys
+    priority = (set(previous["priority"]) | changed_keys | recheck) & keys
     priority.difference_update(completed)
     review, chapter_reviews = [], []
     attempted = 0
@@ -593,6 +750,8 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
         state = {
             "version": STATE_VERSION, "keys": sorted(keys), "chapters": dict(sorted(chapter_keys.items())),
             "completed": sorted(completed), "priority": sorted(priority),
+            "display_checked": dict(sorted(display_checked.items())),
+            "label_keys": dict(sorted(label_keys.items())),
             "failures": dict(sorted(failures.items())), "review_issues": dict(sorted(review_issues.items())),
             "eligible": len(keys),
             "processed": len(completed), "pending": len(remaining),
@@ -620,6 +779,7 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
     ordered = [item for item in candidates if item["key"] in priority & available]
     if backfill:
         ordered.extend(item for item in candidates if item["key"] in available - priority)
+    ordered.sort(key=lambda item: not item["display_key"])
     selected = ordered[:limit]
     if not remaining:
         stop = "complete" if len(completed) == len(keys) else "deferred_or_quarantined"
@@ -639,7 +799,7 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                 if time.monotonic() - started >= seconds:
                     stop = "time_budget"
                     break
-                chapter = load_chapter(data, item["page"], updated)
+                chapter = load_chapter(data, item["page"], updated, navigation)
                 remaining_seconds = seconds - (time.monotonic() - started)
                 if remaining_seconds <= 0:
                     stop = "time_budget"
@@ -657,10 +817,13 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                                           edited=sum(result["status"] == "edited" for result in chapter_audit),
                                           rejected=sum(result["status"] == "rejected" for result in chapter_audit),
                                           needs_review=flagged)
-                    unresolved = [{"cache_key": result["cache_key"], "reason": result["reason"]}
+                    review_fields = ("cache_key", "reason", "status", "english", "current", "proposed", "english_terms")
+                    unresolved = [{field: result[field] for field in review_fields if field in result}
                                   for result in chapter_audit if result["status"] in {"needs_review", "rejected"}]
                     if complete and unresolved:
                         review_issues[chapter.key] = unresolved
+                    elif complete:
+                        review_issues.pop(chapter.key, None)
                     if complete and flagged:
                         chapter_result["status"] = "complete_with_review_issues"
                     elif complete and chapter_result["rejected"]:
@@ -683,6 +846,8 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                     break
                 if complete:
                     completed.add(chapter.key)
+                    if chapter.key in display_flags:
+                        display_checked[chapter.key] = display_flags[chapter.key]
                     failures.pop(chapter.key, None)
                     priority.discard(chapter.key)
                 else:
@@ -704,9 +869,14 @@ def auto_polish(data, page_ids, entries, *, cache_file, state_file, report_file,
                 stop = "complete" if len(completed) == len(keys) else "deferred_or_quarantined"
     changed, applied = apply_cache(data, page_ids, updated, strict=False)
     report = checkpoint()
-    report.update(applied=applied, changed_pages=changed)
+    accepted = sum(row["status"] == "edited" for row in review)
+    proposed = sum("proposed" in row for row in review)
+    report.update(applied=applied, changed_pages=changed, accepted_this_run=accepted,
+                  proposed_for_review_this_run=proposed)
     write_json(report_file, report, indent=2)
-    print(f"Copilot auto: {len(keys)} eligible chapters, {attempted} chapter calls, {applied} local edits applied, "
+    print(f"Copilot auto: {len(keys)} eligible chapters, {attempted} chapter calls, "
+          f"{accepted} edits accepted and {proposed} review candidates this run, "
+          f"{applied} cached edits applied across the site, "
           f"{report['pending']} chapters pending, {report['review_issue_blocks']} blocks for manual review; {stop}")
     return report
 
