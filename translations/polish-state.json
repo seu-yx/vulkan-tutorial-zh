@@ -894,9 +894,14 @@
   },
   "completed": [
     "04c1b5c94e934a702e506d2489ae32d5d91f4f8eca9c19c34c11d7095fe7586f",
+    "0eb1ff988e470f17ea888672a997036a0b56c707c0d3f2f58e187cd2efe851ec",
+    "44f44f30afe3c9baed56c44152fa3127b9642682f5aef0849e9ad26e5ae733e7",
     "4af1efd885de46356fce2284d452f49d46d05aae4b87eae6d7ea3ab0526e49b8",
     "99ec6ca297e0d7943eea771b67a0bbcc7a6efe7aebd435320ad4c08aa541cb8b",
+    "b61236280e76a625b9dd2696cf50e5d7842292de4c039a84f4cb7551186f7126",
     "b6dad64e25243c676a82e2067b8d0a93d42139ee424e83d4ef15a16395d43375",
+    "bb5f410dd55d0d3cb565e06fdd446bb7e0a29e5f02180979a89c1a07d7399989",
+    "c0cb778600af7f7d269563ca998c6d6c7add2a71a4629206a2287dcdb3374e41",
     "cb3cca44d625a8eaa63d40e382b4236fd44aac083dcf75e3fc26677dd7c10bd4",
     "f391d01e2d51f975405b897df35f29dd36dee847646139a7f83544230311d121"
   ],
@@ -928,7 +933,6 @@
     "0d33530a3fa6a319047452ccb9e3cb1d3bf222983958b79882af79c21774ed6b",
     "0d6d6e9ba8428230ac499d48250ba1ba503086799bdedc339360ad6ba2651b2c",
     "0e9470006275aa4d44436603216162cb2b93400c6596bda976514b2dd5e68565",
-    "0eb1ff988e470f17ea888672a997036a0b56c707c0d3f2f58e187cd2efe851ec",
     "0ee7e65d4e825831e7392df80c033b2a0f3eb0cc4c28284eb94ef341e3bd6ae9",
     "0ef3c28c05e3c8882bf2d5c275a85c469c31c3a623a8d4aed5b9dbdb32c17383",
     "0f267c82a26cf145d1d4d16605b2db5e877b2f510754e712ae4fa2678be4d182",
@@ -1008,7 +1012,6 @@
     "43f3d39d7c3e6c03ce67dffce48afa765e2d67805414bf9c68c1a6c00190ba88",
     "43f80cc207b85a802c1397d32c06510b42919eec4304f281668c7ec3418376ce",
     "44ccdcadc29e2008dfdfb3aad4b2e4aa0ba0b44b8e963644ee352e283111f85e",
-    "44f44f30afe3c9baed56c44152fa3127b9642682f5aef0849e9ad26e5ae733e7",
     "44f99e3eb5d718ee7d45d69065a5db5f24e236f1b43f96fd2e092a42e6ef319f",
     "454320d4a21920bc14e30a2434e6875c6653809f04b5cae7d61a7766fde7f857",
     "45d340c990934560c1cef3ce016e55fd79d04fd164e37fa70cecaa0a85a48031",
@@ -1202,7 +1205,6 @@
     "b4441b8444ef1b66427007f94da4a6c35d8a2c93fd773a8e913d7fc6f3952742",
     "b46b092ed829371c2c1426c79f939468b8cd381b9c0861bfecaf5d0c1623225b",
     "b538213ae47b281223b96c2f4f7f932181903bf04c5242a4790495d19d2bb345",
-    "b61236280e76a625b9dd2696cf50e5d7842292de4c039a84f4cb7551186f7126",
     "b652de0b2ee3c6186257f20340c99febd824e2b3fbb22708f8b2c696017d847f",
     "b6656038d675d809b1161bb02321d66bbc6ca8c85bbf895308d89f072bbebf97",
     "b6bfeeb2d42f7ca5430abee23a4332c70743f536a6d0bb43b2e44880257b210f",
@@ -1212,7 +1214,6 @@
     "b9b4d8984ed4bbcae09e0941b5dac0b8dd265432309658e2a21d6dabbb03bcc4",
     "ba513444ba503cb3cc855439811be015901d36bb7543586b8929c74b2965ffb5",
     "ba5c03ef8cfb052e6e05ca3aed8c8edc88ae5392428e50fd3c4ab10f49f91275",
-    "bb5f410dd55d0d3cb565e06fdd446bb7e0a29e5f02180979a89c1a07d7399989",
     "bcb4579dc45f5f7fcc3155a425d8967d5b57a43c4e36a5ec2d540511d54004bd",
     "bccc26c74368369bc330caec2b5ade5d7372968b360b6ccc648ce57511ff887e",
     "bd6bb7d0b39eef87bccab6c9e9b6142abeaf124198701da5b4ea422f69d3f358",
@@ -1222,7 +1223,6 @@
     "bee9923382754f85858d0ddfae3650b0db84b7a2a228521ff6124350e77957c8",
     "c06e1fc562a4bc56e0d52aeadf5567af6156e8070c18d6d815fc1e5f14d544e5",
     "c0c239dac74159eca3fddd18e5f6075a2110a47f8bacf9d9ad292b2a2e8e467e",
-    "c0cb778600af7f7d269563ca998c6d6c7add2a71a4629206a2287dcdb3374e41",
     "c1ed23ee96b145e1bec897059a204f1d64e48cac8d488015a9ff5ec9a81f8841",
     "c21e87bddea5a5982ce46a4583ae5aca5e46c44950162ff2106620228db8fe0a",
     "c2c633f0c303e78818c8a037de6d738a8352ab1e9e7c6c8523f77911364d9c2d",
@@ -1342,6 +1342,66 @@
   ],
   "failures": {},
   "review_issues": {
+    "0eb1ff988e470f17ea888672a997036a0b56c707c0d3f2f58e187cd2efe851ec": [
+      {
+        "cache_key": "87643fb9d23d3d93ed963bbf37f6ed09192a6f425b2e720afd99198003f01793",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "079302c16685e0f1dceb1447f9ff4e1d60702752194fb42696d7b4bed4a30dac",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "be6d8cd3e6f91d37421766c152d84f04da782a9f99eba46793c91e4030099cfa",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "2ba210bd2aa9d0a7f5396d33fcc99ac27639da224378480aeda738211311f358",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "10fdda10f20de251457e75ca2dd063cac3d7b1b892a059eb84b3bcf7774b7a39",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "9a037198c106afe0fd0f9a65cfd5fa20e9a7ac4304c72c6cfe538fbab216581c",
+        "reason": "Protected content was omitted, changed, or reordered"
+      }
+    ],
+    "44f44f30afe3c9baed56c44152fa3127b9642682f5aef0849e9ad26e5ae733e7": [
+      {
+        "cache_key": "7bcf505b4a6473904b1da50dd949a5240e19d02d2f73426de62b686aed5f0cfa",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "0b7f610548ac31e379adadf1b47388e35c74d23d396fad9c09be731a851853a4",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "cf9483f5c92253aa80180957cdba0c107d5a33910b9b94f0823578dc4e01df06",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "da5dfe5ee1c649bd4a168f63117ee4c6c27df02112d4423d130675e833c4a369",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "dfd013f581448bbd12fab4c7fbbb7a0fa35c15d8cad36fd7e01622b381d82d5d",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "9a3ddae94e0ffa2d84681319b8b28481937cee4b9503b558851883bd5d3b1090",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "0eda544c65e1451f39585ec138a24478c6b089f4176ca627d8c98fcc9be68574",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "c65e5eec48360fa60640f41aad6ee64c1ec915d778056cd63190c249920f2bbe",
+        "reason": "Edit exceeds the local correction budget"
+      }
+    ],
     "4af1efd885de46356fce2284d452f49d46d05aae4b87eae6d7ea3ab0526e49b8": [
       {
         "cache_key": "94d82e911f4174701c0fbb338c9a31a41549a99053a2be9fe0d9ddaf5c520bd9",
@@ -1426,6 +1486,24 @@
         "reason": "Technical assertion, condition, or step order changed"
       }
     ],
+    "b61236280e76a625b9dd2696cf50e5d7842292de4c039a84f4cb7551186f7126": [
+      {
+        "cache_key": "9042de578425ff03495112d357d98a3666818e57f4778ba08dbcd7aeabf030f4",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "f172963a548101cf7824ed610cf04f0b690790f70ee1885e48cc453f4f93f40a",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "f4513d8ef58fda2a64ac57f79b7b14f9c2dfb7c9cc89f8e73908bd4b95da4aab",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "f0d1d6c9ab884946e8e8586969315a66e5d234983bc52317b2fe603a655cf75f",
+        "reason": "Technical assertion, condition, or step order changed"
+      }
+    ],
     "b6dad64e25243c676a82e2067b8d0a93d42139ee424e83d4ef15a16395d43375": [
       {
         "cache_key": "e0a84ae609d1f71aaf87e581b0290b3d73473a34c227fd56016d5a3befcf8981",
@@ -1500,6 +1578,154 @@
         "reason": "Technical assertion, condition, or step order changed"
       }
     ],
+    "bb5f410dd55d0d3cb565e06fdd446bb7e0a29e5f02180979a89c1a07d7399989": [
+      {
+        "cache_key": "e1098dac007e158bd12cbb13b1039ab7b131f791606a9e3fb8c9e315bac51e1e",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "edaf1e9217679b2277373057bee033f3a8c714a2f96cb2e6d9f00f2ff8d7b0de",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "f33e7ecc71d8a414931a6ce5c9ce36ed8cbc04bd52b46e3cd2ef0297d2d33192",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "284ebac3a0d8d4bb27ccd6484097924514dd33f810d0416de5b867f2d0482a46",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "d54ef7291d0464768b3a817c65e02047dc1305706eedd1b46e72fcf3d08ec5bf",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "fea0da192e36f06b6eb8a24a425747f89ccec4263ce3037d8a5bbe84a8c48114",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "db9f4d0ffd6842d20fe979fe2fd3f64af850b2fa6b92ba8267ec2f63ace5c576",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "fe5d6257d847ce70f6c4e464560222e6570b3e0b6894bfb7710aa443ef80ae0b",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "807e485882e3e1ccc1affe6f40790b3f66b065ae26bfbb2e0167d049961e8b68",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "20c65ece110273321cf719530ec1060390bdc8c7d08af6cb7d1808126d676cea",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "7196d4545b59026fe1d2a6fda58b18fe58b8eaa5f93c85d5c02ceb60b1200de2",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "b65296e86555f1ea7cfa6424563899ac51f44a1f795eae20d89c4933ee9772c7",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "e3650cc5025dd564046d716281486c225458f4fd5725d7733fe0aa2a698a9c5a",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "0dba2b1cf825f40c374777b44898a2e95ed49ea61ab8a8eb08c0626392d5dedd",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "00ad6edccb827f07d14c66d7d29ca00aded66c0451a7c47080553ac91b8d2347",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "2b9995898a26fc1ebb698b97592d0b591c124a3134e9bdc393060a17b140b1d6",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "384e19bab39c50c4ae072655173f019936bbcf88dbef6560d1d738409daf0083",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "8e480c6d482c28efbac59c690f0faeb136f51af1b79f7b69f8a0b4472d55adfd",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "a392e4f53d361a01fcf53d93c1fb441643244f2cc36434cdff831f14c896706c",
+        "reason": "Protected content was omitted, changed, or reordered"
+      },
+      {
+        "cache_key": "088913091c481a63377e100616da07ca533e9d575a2f7a0a1416e1eeca4ee847",
+        "reason": "“映像”在此图形语境中不如“图像”准确，但该词受占位符保护，无法安全修改。"
+      },
+      {
+        "cache_key": "00d418dc3051b87c7f7588b0266e10dcac7ef835956cda894811966048e2d846",
+        "reason": "“映像”在此图形语境中不如“图像”准确，但该词受占位符保护，无法安全修改。"
+      },
+      {
+        "cache_key": "78ab9bf529e5005948ab1e5b9a66c26f5beccb0eb156b02137be112d70155d96",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "092cc7de27de90284b10278b56a2bab5b3a5f9d9e6ae31d0b5a02636f9d9cd48",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "10d282bb5e7401a68ac0ee60deb90dea1e50f1e5a903db1f4a4fdbaee2ec7b89",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "22ceafd70bc7bcc1ead07b43d43a4782717612e7ceebd55ed31735801174d0e1",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "b34f2c22769a906f609a5f659ad49818e1d23327c6dd24dae32b9bfb0a2b69b4",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "442bec847a19ab4ab00cb789ca0399f4d0d659502dfa7ca1bdd350cb47f32372",
+        "reason": "Technical assertion, condition, or step order changed"
+      }
+    ],
+    "c0cb778600af7f7d269563ca998c6d6c7add2a71a4629206a2287dcdb3374e41": [
+      {
+        "cache_key": "92fbd608f055652e50fcb98f0229cb46d6e97ce796cd06dff3a16987702a263a",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "88c84c47d0e5685d7b9b3d2047572a7af6cf4fe3f6d39d15176056a0f224fd4a",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "cf01954015896a6cee43c780a6af79f4cd5a2c6e6d6a5f56c55decfc7e14c343",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "720449549f89927cdb521eb563488cceac692a14f0197a0acae14819886fe652",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "e3e85a29e3862d8a43001644c34b9132c154535e3984010086549c125fe787ff",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "f5869fec1fe8aea348a001f550f8df995710db174b0ee54f7504789bd88ef366",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "89af3e8c910f5eb236e008a67feedc0f846e0dc724cb9a5ee1c02605522e5878",
+        "reason": "Technical assertion, condition, or step order changed"
+      },
+      {
+        "cache_key": "d97ed7021ae4f4227c2c3cb299d0e7915bdb56c91806a019f969ffa1149cc8f8",
+        "reason": "Edit exceeds the local correction budget"
+      },
+      {
+        "cache_key": "49fb5ab463f8421574332604296208c7c6da5f747b77ecee2dbb7abb9df2a2f7",
+        "reason": "Technical assertion, condition, or step order changed"
+      }
+    ],
     "cb3cca44d625a8eaa63d40e382b4236fd44aac083dcf75e3fc26677dd7c10bd4": [
       {
         "cache_key": "e3290fe536223cdb0363e6513efd8744c4e8c49372e57902bfd9938ab9758f7e",
@@ -1570,9 +1796,9 @@
     ]
   },
   "eligible": 444,
-  "processed": 6,
-  "pending": 438,
-  "priority_pending": 438,
+  "processed": 11,
+  "pending": 433,
+  "priority_pending": 433,
   "backfill_pending": 0,
   "rejected": 0,
   "deferred": 0,
