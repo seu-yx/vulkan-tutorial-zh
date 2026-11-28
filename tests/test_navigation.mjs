@@ -7,6 +7,7 @@ const source = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'ut
 const instrumented = source.replace(/\n  init\(\);\n\}\)\(\);\s*$/, '\n  globalThis.navigationTest = {buildNavigationTree, filterNavigationTree, renderTermBlock};\n})();');
 assert.notEqual(instrumented, source, 'Reader test hook did not match');
 const context = {document: {currentScript: {src: 'https://example.test/tutorial/app.js'}}, localStorage: {getItem: () => null}, URL};
+vm.runInNewContext(fs.readFileSync(new URL('../public/term-text.js', import.meta.url), 'utf8'), context);
 vm.runInNewContext(instrumented, context);
 const {buildNavigationTree, filterNavigationTree} = context.navigationTest;
 const page = (id, title = id) => ({id, title, titleZh: title, group: '基础教程'});

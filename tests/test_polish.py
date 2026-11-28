@@ -49,6 +49,14 @@ def first_paragraph(chinese=CHINESE, english=ENGLISH, page_id="overview"):
 
 
 class ParagraphSafetyTests(unittest.TestCase):
+    def test_prompt_budget_and_assertions_use_only_unlocked_prose(self):
+        paragraph = first_paragraph("应该创建<code>必须</code>对象。")
+        request = paragraph.request()
+        self.assertEqual(request["assertions"], ["应该"])
+        self.assertEqual(request["max_edit_chars"], 2)
+        self.assertEqual(polish.edit_budget("字" * 50), 9)
+        self.assertEqual(polish.edit_budget("字" * 1000), 44)
+
     def test_minimal_fluency_edit_keeps_the_rest_of_the_sentence(self):
         paragraph = first_paragraph()
         paragraph.restore(paragraph.draft.replace("初始化以后", "初始化后"))
@@ -165,7 +173,7 @@ class ChapterWorkflowTests(unittest.TestCase):
         self.state = self.root / "polish-state.json"
         self.report = self.root / "report.json"
         self.pages = []
-        self.environment = patch.dict(os.environ, {"COPILOT_GITHUB_TOKEN": "unit-test-token"}, clear=True)
+        self.environment = patch.dict(os.environ, {"GITHUB_TOKEN": "", "COPILOT_GITHUB_TOKEN": "unit-test-token"})
         self.cli = patch.object(polish.shutil, "which", return_value="/mock/copilot")
         self.environment.start()
         self.cli.start()
@@ -268,8 +276,11 @@ class ChapterWorkflowTests(unittest.TestCase):
         path.write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
         chapter = polish.load_chapter(self.data, "overview", {})
         self.assertEqual(len(chapter.editable), 1)
-        self.assertTrue(any(not unit["editable"] and unit.get("Chinese")
-                            for unit in chapter.units))
+        reviewed = next(unit for unit in chapter.units if unit.get("issue_only") and "Stage 0" in unit["English"])
+        self.assertFalse(reviewed["editable"])
+        self.assertNotIn(reviewed["id"], chapter.editable)
+        self.assertIn("交换链", reviewed["reader"]["off"])
+        self.assertIn("swap chain", reviewed["reader"]["on"])
 
     def test_batch_deadline_does_not_mark_the_last_chapter_as_a_failure(self):
         self.add_page("first")
@@ -341,8 +352,14 @@ class ChapterWorkflowTests(unittest.TestCase):
         state = polish.read_state(self.state)
         self.assertEqual((len(polish.read_cache(self.cache)), state["pending"]), (1, 0))
         rejected = report["paragraphs"][1]
-        self.assertEqual(state["review_issues"], {report["chapters"][0]["key"]: [
-            {"cache_key": rejected["cache_key"], "reason": rejected["reason"]}]})
+        saved = state["review_issues"][report["chapters"][0]["key"]][0]
+        for field in ("cache_key", "reason", "status", "english", "current", "proposed"):
+            self.assertEqual(saved[field], rejected[field])
+        self.assertNotIn("交换链", saved["proposed"])
+        self.assertIn("交换链", saved["current"])
+        self.assertIn("vk::raii::Device device{\n    physicalDevice\n};", saved["proposed"])
+        self.assertNotIn("⟦", saved["proposed"])
+        self.assertEqual(rejected["polished"], saved["current"])
         with patch.object(polish, "copilot") as remote:
             self.run_auto()
         remote.assert_not_called()
@@ -354,11 +371,13 @@ class ChapterWorkflowTests(unittest.TestCase):
         answer = {**confirmed(chapter.metadata), "issues": {"1": reason}}
         with patch.object(polish, "copilot", return_value=answer):
             report = self.run_auto()
-        issue = {"cache_key": chapter.editable["1"].key, "reason": reason}
         self.assertEqual((report["chapters"][0]["status"], report["paragraphs"][0]["status"]),
                          ("complete_with_review_issues", "needs_review"))
         self.assertEqual(polish.read_cache(self.cache), {})
-        self.assertEqual(polish.read_state(self.state)["review_issues"], {chapter.key: [issue]})
+        issue = polish.read_state(self.state)["review_issues"][chapter.key][0]
+        self.assertEqual((issue["cache_key"], issue["reason"], issue["english"], issue["status"]),
+                         (chapter.editable["1"].key, reason, ENGLISH, "needs_review"))
+        self.assertNotIn("proposed", issue)
         with patch.object(polish, "copilot") as remote:
             report = self.run_auto()
         remote.assert_not_called()
@@ -375,7 +394,9 @@ class ChapterWorkflowTests(unittest.TestCase):
         chapter = polish.load_chapter(self.data, "overview", {})
         for issues in ([], {"999": "校核"}, {"context-2": "校核"}, {"1": "   "},
                        {"1": 123}, {"1": "补" * (polish.MAX_REVIEW_ISSUE_LENGTH + 1)},
-                       {"1": "一行\n二行"}, {"1": "格式\u202e控制"}):
+                       {"1": "一行\n二行"}, {"1": "格式\u202e控制"},
+                       {"1": {"reason": "解释", "proposed": ""}}, {"1": {"proposed": "另一个翻译"}},
+                       {"1": {"reason": "解释", "proposed": [1, 2]}}):
             with self.subTest(issues=issues):
                 with self.assertRaises(polish.InvalidPolishResponse):
                     polish.review_chapter(chapter, {**confirmed(chapter.metadata), "issues": issues}, {})
@@ -383,6 +404,31 @@ class ChapterWorkflowTests(unittest.TestCase):
                        "issues": {"1": "原文含义需要检查"}}
         with self.assertRaises(polish.InvalidPolishResponse):
             polish.review_chapter(chapter, overlapping, {})
+
+    def test_semantic_retranslation_is_durable_review_only_and_accepts_older_state(self):
+        self.add_page("overview", english="Do not free memory before the queue is idle.",
+                      chinese="队列空闲之前可以释放内存。")
+        chapter = polish.load_chapter(self.data, "overview", {})
+        baseline = self.page_file("overview").read_bytes()
+        candidate = {"reason": "原文禁止提前释放，机翻把这项限制译反了。",
+                     "proposed": "队列空闲之前不能释放内存。"}
+        answer = {**confirmed(chapter.metadata), "issues": {"1": candidate}}
+        with patch.object(polish, "copilot", return_value=answer):
+            report = self.run_auto()
+        state = polish.read_state(self.state)
+        issue = state["review_issues"][chapter.key][0]
+        self.assertEqual(issue["proposed"], candidate["proposed"])
+        self.assertEqual(issue["current"], "队列空闲之前可以释放内存。")
+        self.assertEqual(report["paragraphs"][0]["polished"], issue["current"])
+        self.assertEqual(self.page_file("overview").read_bytes(), baseline)
+        self.assertEqual(polish.read_cache(self.cache), {})
+
+        state["review_issues"][chapter.key] = [{"cache_key": issue["cache_key"], "reason": issue["reason"]}]
+        polish.write_json(self.state, state)
+        with patch.object(polish, "copilot") as remote:
+            resumed = self.run_auto()
+        remote.assert_not_called()
+        self.assertEqual(resumed["review_issues"], state["review_issues"])
 
     def test_missing_confirmation_wrong_identity_and_invented_ids_never_complete(self):
         self.add_page("overview")
@@ -441,7 +487,7 @@ class ChapterWorkflowTests(unittest.TestCase):
         self.cache.write_text(json.dumps({"version": 1, "entries": {block.key: block.draft.replace("初始化以后", "初始化后")}}, ensure_ascii=False), encoding="utf-8")
         google = self.root / "google.jsonl"
         google.write_bytes(b"immutable Google cache\n")
-        with patch.dict(os.environ, {}, clear=True), patch.object(polish, "copilot") as remote:
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "", "COPILOT_GITHUB_TOKEN": ""}), patch.object(polish, "copilot") as remote:
             report = self.run_auto()
         remote.assert_not_called()
         self.assertEqual((report["stopped_reason"], report["applied"]), ("no_auth", 1))

@@ -5,7 +5,8 @@ import unittest
 
 from bs4 import BeautifulSoup
 
-from scripts.audit_translation_quality import audit, untranslated_emphasis
+from scripts.audit_translation_quality import audit, repeated_term_phrases, untranslated_emphasis
+from scripts.term_views import project_term_views
 
 
 class TranslationQualityTests(unittest.TestCase):
@@ -32,6 +33,55 @@ class TranslationQualityTests(unittest.TestCase):
         ):
             with self.subTest(chinese=chinese):
                 self.assertEqual(self.check_pair(english, chinese), [])
+
+    def test_repeated_terms_follow_the_reader_and_respect_inline_boundaries(self):
+        term = '<span class="vt-term" data-english="mipmap">多级纹理</span>'
+        compound = '<span class="vt-term" data-english="command buffer">命令缓冲区</span>'
+        examples = [
+            (f'{term} <em>Mipmap</em>。', ['mipmap Mipmap']),
+            (f'<em>mipmap</em> {term}', ['mipmap mipmap']),
+            (f'{term} {term}', ['mipmap mipmap']),
+            (f'{compound} command buffer', ['command buffer command buffer']),
+            (f'{term}（mipmap）', []),  # The reader hides the redundant gloss.
+            (f'{term} <code>mipmap</code>', []),
+            (f'{term} <a href="mipmap.txt">mipmap</a>', []),
+            (f'{term} mipmapLevel', []),
+            (f'texture texture 与 {term}', []),
+            ('<code>' + term + '</code> mipmap', []),
+        ]
+        blocks = [BeautifulSoup(markup, 'html.parser') for markup, _ in examples]
+        for (markup, expected), view in zip(examples, project_term_views(blocks), strict=True):
+            with self.subTest(markup=markup):
+                self.assertEqual(repeated_term_phrases(view), expected)
+
+    def test_flags_repeated_terms_in_read_only_body_titles_and_navigation(self):
+        term = '<span class="vt-term" data-english="mipmap">多级纹理</span>'
+        markup = f'{term} mipmap'
+        page = {'id': 'example', 'title': 'Mipmaps', 'titleZhHtml': markup, 'html': (
+            '<div class="vt-pair"><h2 id="levels" class="vt-en">Levels</h2>'
+            '<h2 class="vt-zh">层级</h2></div>'
+            '<div class="vt-pair"><p class="vt-en">Create a mipmap.</p>'
+            f'<p class="vt-zh" data-vt-reviewed="true">创建{markup}。</p></div>'
+        )}
+        with TemporaryDirectory() as directory:
+            data = Path(directory)
+            (data / 'pages').mkdir()
+            (data / 'pages/example.json').write_text(json.dumps(page), encoding='utf-8')
+            catalog = {'pages': [{'id': 'example', 'title': 'Mipmaps'}],
+                       'navigation': [{'title': 'Mipmaps group', 'titleZhHtml': markup}]}
+            (data / 'catalog.json').write_text(json.dumps(catalog), encoding='utf-8')
+            report = audit(data)
+
+        self.assertEqual(report['findings'], [])
+        body, title, nav = report['repeatedTerms']
+        self.assertEqual(body, {
+            'scope': 'body', 'page': 'example', 'heading': 'Levels', 'anchor': 'levels',
+            'pair': 2, 'english': 'Create a mipmap.', 'chinese': '创建多级纹理 mipmap。',
+            'englishTerms': '创建 mipmap mipmap。', 'phrases': ['mipmap mipmap'],
+        })
+        self.assertEqual((title['scope'], title['english']), ('pageTitle', 'Mipmaps'))
+        self.assertEqual((nav['scope'], nav['navigationIndex'], nav['page']), ('navigation', 0, None))
+        self.assertEqual(nav['phrases'], ['mipmap mipmap'])
 
     def test_report_includes_source_heading_and_anchor(self):
         with TemporaryDirectory() as directory:

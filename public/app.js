@@ -225,36 +225,12 @@
     if (term.closest('pre, code, kbd, samp, math, svg')) return;
     const before = term.previousSibling;
     const after = term.nextSibling;
-    if (/^\p{Script=Han}/u.test(term.textContent) && before?.nodeType === Node.TEXT_NODE) {
-      before.data = before.data.replace(/([\p{Script=Han}，。！？；：、（）《》“”‘’]) +$/u, '$1');
+    if (before?.nodeType === Node.TEXT_NODE) {
+      before.data = VulkanTermText.trimTermPadding(before.data, '', term.textContent);
     }
-    if (/\p{Script=Han}$/u.test(term.textContent) && after?.nodeType === Node.TEXT_NODE) {
-      after.data = after.data.replace(/^ +(?=[\p{Script=Han}，。！？；：、（）《》“”‘’])/u, '');
+    if (after?.nodeType === Node.TEXT_NODE) {
+      after.data = VulkanTermText.trimTermPadding(after.data, term.textContent, '');
     }
-  }
-  // Project English labels onto the original inline text. Text-node boundaries
-  // include links and emphasis, so spacing is consistent across nested markup.
-  function englishTermTexts(runs) {
-    const values = runs.map(run => run.english || run.text);
-    for (let i = 0; i + 1 < runs.length; i++) {
-      if (!runs[i].english || runs[i + 1].protected || runs[i + 1].english) continue;
-      // Suppress an explicit copy of this English name; keep abbreviations,
-      // interface identifiers, links and explanatory parentheticals.
-      const gloss = /^\s*[（(]\s*([^（）()]+?)\s*[）)]/.exec(values[i + 1]);
-      if (gloss && gloss[1].toLowerCase() === runs[i].english.toLowerCase()) {
-        values[i + 1] = values[i + 1].slice(gloss[0].length);
-      }
-    }
-    let previous = -1;
-    for (let i = 0; i < runs.length; i++) {
-      if (!values[i]) continue;
-      if (previous !== -1 && /[\p{L}\p{N}]$/u.test(values[previous]) && /^[\p{L}\p{N}]/u.test(values[i])) {
-        if (runs[i].english) values[i] = ' ' + values[i];
-        else if (runs[previous].english) values[previous] += ' ';
-      }
-      previous = i;
-    }
-    return values;
   }
   const termBlocks = new WeakMap();
   function renderTermBlock(block, enabled) {
@@ -270,7 +246,7 @@
         if (english) terms.push({term, english, chinese: node.data});
         runs.push({node, english, protected: protectedText || !!parent?.closest('a'), text: node.data});
       }
-      const values = englishTermTexts(runs);
+      const values = VulkanTermText.englishTermTexts(runs);
       const changes = runs.flatMap((run, i) => values[i] === run.text ? [] : [{node: run.node, chinese: run.text, english: values[i]}]);
       view = {changes, terms};
       termBlocks.set(block, view);
